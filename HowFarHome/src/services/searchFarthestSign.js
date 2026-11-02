@@ -1,55 +1,47 @@
-// Búsqueda simulada: todos los datos son inventados. Para conectar OpenStreetMap
-// y Street View basta con reimplementar searchFarthestSign con este mismo contrato.
+import { bearingDegrees } from './geo.js'
+import { describeLocation, findMunicipality } from './nominatim.js'
+import { findRoute } from './osrm.js'
+import { fetchSignElements } from './overpass.js'
+import { extractSigns, normalizeName } from './signs.js'
+import { findPanorama } from './streetView.js'
 
 export const SEARCH_STEPS = [
   'Localizando el municipio',
-  'Rastreando carteles en OpenStreetMap',
-  'Midiendo la distancia de cada cartel',
+  'Rastreando carteles en OpenStreetMap (1-2 min)',
+  'Midiendo la vuelta a casa',
   'Buscando la foto en Street View',
 ]
 
-const STEP_DURATION_MS = 950
 const SETTLE_DURATION_MS = 450
+const WALKING_KMH = 5
+const CACHE_PREFIX = 'howfarhome:v1:'
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
-const MOCK_SIGNS = [
-  { road: 'A-1', roadKm: 161, place: 'Aranda de Duero', province: 'Burgos', lat: 41.67, lng: -3.69 },
-  { road: 'A-2', roadKm: 327, place: 'Alfajarín', province: 'Zaragoza', lat: 41.61, lng: -0.7 },
-  { road: 'A-3', roadKm: 191, place: 'Motilla del Palancar', province: 'Cuenca', lat: 39.57, lng: -1.91 },
-  { road: 'A-4', roadKm: 200, place: 'Valdepeñas', province: 'Ciudad Real', lat: 38.76, lng: -3.38 },
-  { road: 'A-5', roadKm: 180, place: 'Navalmoral de la Mata', province: 'Cáceres', lat: 39.89, lng: -5.54 },
-  { road: 'A-6', roadKm: 187, place: 'Tordesillas', province: 'Valladolid', lat: 41.5, lng: -5 },
-  { road: 'A-7', roadKm: 549, place: 'Puerto Lumbreras', province: 'Murcia', lat: 37.56, lng: -1.81 },
-]
-
-function hashName(name) {
-  let hash = 2166136261
-  for (const char of name.toLowerCase()) {
-    hash = Math.imul(hash ^ char.codePointAt(0), 16777619)
+// Error con un mensaje pensado para enseñárselo a la persona que busca.
+export class SearchError extends Error {
+  constructor(userMessage) {
+    super(userMessage)
+    this.userMessage = userMessage
   }
-  return hash >>> 0
 }
 
-// El mismo municipio devuelve siempre el mismo resultado.
-function buildMockResult(municipality) {
-  const seed = hashName(municipality)
-  const pick = (salt, min, max) => {
-    const value = Math.imul(seed ^ salt, 2654435761) >>> 0
-    return min + (value % (max - min + 1))
+function readCache(query) {
+  try {
+    const entry = JSON.parse(localStorage.getItem(CACHE_PREFIX + normalizeName(query)))
+    return entry && Date.now() - entry.savedAt < CACHE_TTL_MS ? entry.result : null
+  } catch {
+    return null
   }
+}
 
-  const distanceKm = pick(11, 120, 640)
-  const roadDistanceKm = Math.round(distanceKm * (pick(23, 115, 135) / 100))
-
-  return {
-    municipality,
-    distanceKm,
-    roadDistanceKm,
-    driveMinutes: Math.round((roadDistanceKm / 95) * 60),
-    walkHours: Math.round(roadDistanceKm / 5),
-    signsFound: pick(37, 6, 94),
-    fartherThanPercent: pick(41, 52, 99),
-    bearingDegrees: pick(53, 0, 359),
-    sign: MOCK_SIGNS[seed % MOCK_SIGNS.length],
+function writeCache(query, result) {
+  try {
+    localStorage.setItem(
+      CACHE_PREFIX + normalizeName(query),
+      JSON.stringify({ savedAt: Date.now(), result }),
+    )
+  } catch {
+    // Sin almacenamiento disponible simplemente se repite la búsqueda.
   }
 }
 
@@ -67,13 +59,68 @@ function wait(ms, signal) {
   })
 }
 
-export async function searchFarthestSign(municipality, { signal, onProgress } = {}) {
-  for (let step = 0; step < SEARCH_STEPS.length; step++) {
-    onProgress?.(step)
-    await wait(STEP_DURATION_MS, signal)
+// Estos datos enriquecen el resultado: si fallan, el cartel sigue siendo válido.
+async function optional(request, signal) {
+  try {
+    return await request()
+  } catch (error) {
+    if (signal?.aborted) throw error
+    return null
   }
+}
+
+export async function searchFarthestSign(query, { signal, onProgress } = {}) {
+  const cached = readCache(query)
+  if (cached) {
+    onProgress?.(SEARCH_STEPS.length)
+    await wait(SETTLE_DURATION_MS, signal)
+    return cached
+  }
+
+  onProgress?.(0)
+  const municipality = await findMunicipality(query, { signal })
+  if (!municipality) {
+    throw new SearchError(`No encontramos ningún municipio llamado «${query}» en España.`)
+  }
+
+  onProgress?.(1)
+  const elements = await fetchSignElements(municipality.name, { signal })
+  const signs = extractSigns(elements, municipality)
+  if (!signs.length) {
+    throw new SearchError(
+      `OpenStreetMap no tiene ningún cartel de carretera que mencione ${municipality.name}.`,
+    )
+  }
+
+  onProgress?.(2)
+  const [farthest] = signs
+  const nearest = signs.at(-1)
+  const home = { lat: municipality.lat, lng: municipality.lng }
+  const [route, location] = await Promise.all([
+    optional(() => findRoute(farthest, home, { signal }), signal),
+    optional(() => describeLocation(farthest, { signal }), signal),
+  ])
+
+  onProgress?.(3)
+  const panorama = await optional(() => findPanorama(farthest, { signal }), signal)
+
   onProgress?.(SEARCH_STEPS.length)
   await wait(SETTLE_DURATION_MS, signal)
 
-  return buildMockResult(municipality)
+  const result = {
+    municipality: municipality.name,
+    region: municipality.region,
+    distanceKm: farthest.distanceKm,
+    nearestKm: nearest.distanceKm,
+    roadDistanceKm: route?.distanceKm ?? null,
+    driveMinutes: route?.durationMinutes ?? null,
+    walkHours: (route?.distanceKm ?? farthest.distanceKm) / WALKING_KMH,
+    signsFound: signs.length,
+    bearingDegrees: bearingDegrees(farthest, home),
+    sign: { ...farthest, place: location?.place ?? null, region: location?.region ?? null },
+    panorama,
+  }
+
+  writeCache(query, result)
+  return result
 }

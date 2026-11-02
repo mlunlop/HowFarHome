@@ -19,7 +19,7 @@ function Landing({ initialQuery, error, onSearch }) {
 
       <form
         onSubmit={handleSubmit}
-        className="mt-10 flex w-full max-w-xl items-center rounded-xl border border-white/25 bg-black p-1.5 transition-colors focus-within:border-signal sm:mt-12"
+        className="mt-10 flex w-full max-w-xl items-center rounded-xl border border-white/25 bg-ground p-1.5 transition-colors focus-within:border-signal sm:mt-12"
       >
         <label htmlFor="municipality" className="sr-only">
           Nombre del municipio
@@ -54,7 +54,7 @@ function Landing({ initialQuery, error, onSearch }) {
       )}
 
       <p className="mt-8 max-w-lg text-base leading-relaxed text-pretty text-white sm:text-lg">
-        Escribe tu municipio y encontramos el cartel de carretera más lejano que
+        Escribe tu municipio y buscamos en OpenStreetMap el cartel de carretera más lejano que
         lo menciona: a cuántos kilómetros está de casa y cómo se ve en Street View.
       </p>
 

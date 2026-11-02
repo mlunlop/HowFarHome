@@ -1,3 +1,5 @@
+import { formatKm } from '../services/geo.js'
+
 const COMPASS = [
   'Norte', 'Nornoreste', 'Noreste', 'Estenoreste',
   'Este', 'Estesureste', 'Sureste', 'Sursureste',
@@ -16,14 +18,16 @@ function formatDrive(totalMinutes) {
 }
 
 function formatWalk(totalHours) {
-  const days = Math.floor(totalHours / 24)
-  const hours = totalHours % 24
+  if (totalHours < 1) return `${Math.round(totalHours * 60)} min`
+  const rounded = Math.round(totalHours)
+  const days = Math.floor(rounded / 24)
+  const hours = rounded % 24
   return days ? `${days} d ${hours} h` : `${hours} h`
 }
 
 function Stat({ label, value, note, icon }) {
   return (
-    <div className="flex flex-col bg-black p-4 sm:p-5">
+    <div className="flex flex-col bg-ground p-4 sm:p-5">
       <dt className="text-sm text-white/60">{label}</dt>
       <dd className="mt-2 flex items-center gap-2 font-display text-2xl font-semibold tabular-nums sm:text-3xl">
         {icon}
@@ -37,29 +41,29 @@ function Stat({ label, value, note, icon }) {
 function StatsDashboard({ result }) {
   const {
     distanceKm,
+    nearestKm,
     roadDistanceKm,
     driveMinutes,
     walkHours,
     signsFound,
-    fartherThanPercent,
     bearingDegrees,
   } = result
 
   return (
-    <section className="flex flex-col overflow-hidden rounded-xl border border-white/15" aria-labelledby="stats-title">
+    <section className="flex flex-col overflow-hidden rounded-xl border border-white/15 bg-ground" aria-labelledby="stats-title">
       <h2 id="stats-title" className="border-b border-white/15 px-4 py-3 font-display text-lg font-semibold text-signal">
         El viaje de vuelta
       </h2>
       <dl className="grid flex-1 grid-cols-2 gap-px bg-white/15">
         <Stat
           label="Por carretera"
-          value={`${roadDistanceKm} km`}
-          note={`${distanceKm} km en línea recta`}
+          value={roadDistanceKm === null ? '—' : `${formatKm(roadDistanceKm)} km`}
+          note={`${formatKm(distanceKm)} km en línea recta`}
         />
         <Stat
           label="Al volante"
-          value={formatDrive(driveMinutes)}
-          note="A 95 km/h de media"
+          value={driveMinutes === null ? '—' : formatDrive(driveMinutes)}
+          note="Según OSRM"
         />
         <Stat
           label="Andando sin parar"
@@ -69,7 +73,7 @@ function StatsDashboard({ result }) {
         <Stat
           label="Carteles encontrados"
           value={signsFound}
-          note="Con este nombre"
+          note="Mapeados en OSM"
         />
         <Stat
           label="Rumbo a casa"
@@ -88,9 +92,9 @@ function StatsDashboard({ result }) {
           }
         />
         <Stat
-          label="Más lejos que"
-          value={`${fartherThanPercent} %`}
-          note="De los municipios"
+          label="El más cercano"
+          value={`${formatKm(nearestKm)} km`}
+          note="Del centro del municipio"
         />
       </dl>
     </section>

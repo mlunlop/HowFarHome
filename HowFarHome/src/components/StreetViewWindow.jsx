@@ -1,8 +1,11 @@
+import { formatKm } from '../services/geo.js'
+import { embedUrl, mapsUrl } from '../services/streetView.js'
+
 const NAME_MAX_WIDTH = 288
 const NAME_MAX_FONT_SIZE = 38
 
-// Escena dibujada a mano que ocupa el sitio del panorama real de Street View.
-function SimulatedScene({ result }) {
+// Escena dibujada que sustituye a la foto cuando no hay clave de Google o cobertura.
+function DrawnScene({ result }) {
   const { municipality, distanceKm, sign } = result
   const nameFontSize = Math.min(
     NAME_MAX_FONT_SIZE,
@@ -15,7 +18,7 @@ function SimulatedScene({ result }) {
       preserveAspectRatio="xMidYMid slice"
       className="absolute inset-0 size-full"
       role="img"
-      aria-label={`Vista simulada del cartel de ${municipality} en la ${sign.road}`}
+      aria-label={`Dibujo orientativo del cartel de ${municipality}`}
     >
       <defs>
         <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -36,12 +39,16 @@ function SimulatedScene({ result }) {
       <rect x="440" y="84" width="320" height="130" rx="8" fill="#fff" />
       <rect x="447" y="91" width="306" height="116" rx="4" fill="none" stroke="#000" strokeWidth="2" />
 
-      <rect x="458" y="102" width="62" height="28" rx="4" fill="#ff2d2d" />
-      <text x="489" y="122" textAnchor="middle" fill="#fff" fontFamily="Inter Variable, sans-serif" fontSize="18" fontWeight="700">
-        {sign.road}
-      </text>
+      {sign.badge && (
+        <>
+          <rect x="458" y="102" width="92" height="28" rx="4" fill="#ff2d2d" />
+          <text x="504" y="122" textAnchor="middle" fill="#fff" fontFamily="Inter Variable, sans-serif" fontSize="16" fontWeight="700">
+            {sign.badge.split(';')[0]}
+          </text>
+        </>
+      )}
       <text x="742" y="123" textAnchor="end" fill="#000" fontFamily="Inter Variable, sans-serif" fontSize="20" fontWeight="600">
-        {distanceKm} km
+        {formatKm(distanceKm)} km
       </text>
       <text x="456" y="178" fill="#000" fontFamily="Bricolage Grotesque Variable, sans-serif" fontSize={nameFontSize} fontWeight="700">
         {municipality}
@@ -51,28 +58,52 @@ function SimulatedScene({ result }) {
 }
 
 function StreetViewWindow({ result }) {
-  const { sign } = result
+  const { municipality, sign, panorama } = result
 
   return (
-    <section className="overflow-hidden rounded-xl border border-white/15" aria-labelledby="street-view-title">
+    <section className="overflow-hidden rounded-xl border border-white/15 bg-ground" aria-labelledby="street-view-title">
       <header className="flex items-center justify-between gap-3 border-b border-white/15 px-4 py-3">
         <h2 id="street-view-title" className="font-display text-lg font-semibold text-signal">
           Street View
         </h2>
-        <span className="text-sm text-white/60">Vista simulada</span>
+        <span className="text-sm text-white/60">
+          {panorama ? panorama.date && `Foto de ${panorama.date}` : 'Dibujo orientativo'}
+        </span>
       </header>
 
       <div className="relative aspect-video bg-neutral-950">
-        <SimulatedScene result={result} />
+        {panorama ? (
+          <iframe
+            title={`Street View del cartel de ${municipality}`}
+            src={embedUrl(panorama)}
+            className="absolute inset-0 size-full"
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        ) : (
+          <DrawnScene result={result} />
+        )}
       </div>
 
-      <footer className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t border-white/15 px-4 py-3 text-sm text-white/60 tabular-nums">
-        <span>
-          {sign.road}, km {sign.roadKm}
-        </span>
-        <span>
-          {sign.lat.toFixed(2)}, {sign.lng.toFixed(2)}
-        </span>
+      <footer className="space-y-2 border-t border-white/15 px-4 py-3 text-sm">
+        <p className="wrap-break-word text-white">
+          <span className="text-white/60">Según OpenStreetMap, indica: </span>
+          {sign.text}
+        </p>
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-white/60 tabular-nums">
+          <span>
+            {sign.lat.toFixed(5)}, {sign.lng.toFixed(5)}
+          </span>
+          <span className="flex gap-4">
+            <a href={sign.osmUrl} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
+              Ver en OSM
+            </a>
+            <a href={mapsUrl(sign, panorama)} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
+              Abrir en Google Maps
+            </a>
+          </span>
+        </div>
       </footer>
     </section>
   )

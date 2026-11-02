@@ -4,6 +4,7 @@
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
   --color-signal: #ff2d2d;
+  --color-ground: #141416;
 
   --animate-screen-in: screen-in 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-rise-in: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -44,7 +45,20 @@
   }
 
   body {
-    @apply bg-black font-sans text-white antialiased;
+    @apply bg-ground font-sans text-white antialiased;
+  }
+
+  /* Curvas de nivel, más visibles en los bordes para que el centro respire */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 0%, rgb(255 45 45 / 0.07), transparent 70%),
+      url('/contours.svg') center / cover no-repeat;
+    mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, rgb(0 0 0 / 0.45), black);
   }
 
   ::selection {

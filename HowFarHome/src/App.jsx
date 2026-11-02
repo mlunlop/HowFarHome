@@ -29,7 +29,10 @@ function App() {
       setScreen('result')
     } catch (err) {
       if (err.name === 'AbortError') return
-      setError('No hemos podido completar la búsqueda. Inténtalo de nuevo.')
+      setError(
+        err.userMessage ??
+          'Los servicios de mapas no han respondido. Espera un momento e inténtalo de nuevo.',
+      )
       setScreen('landing')
     }
   }
