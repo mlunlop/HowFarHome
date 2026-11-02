@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-signal: #ff2d2d;
+
+  --animate-screen-in: screen-in 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-in: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-road: road 700ms linear infinite;
+  --animate-pulse-dot: pulse-dot 1s ease-in-out infinite;
+
+  @keyframes screen-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+  }
+
+  /* Debe coincidir con el periodo de .road-dashes */
+  @keyframes road {
+    from {
+      transform: translateY(-140px);
+    }
+  }
+
+  @keyframes pulse-dot {
+    50% {
+      opacity: 0.35;
+      transform: scale(0.7);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-black font-sans text-white antialiased;
+  }
+
+  ::selection {
+    @apply bg-signal text-black;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-4 outline-signal;
+  }
+}
+
+.road-dashes {
+  background-image: linear-gradient(var(--color-signal) 60%, transparent 60%);
+  background-size: 100% 140px;
+}
+
+.dashed-line {
+  background-image: linear-gradient(var(--color-signal) 55%, transparent 55%);
+  background-size: 100% 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
