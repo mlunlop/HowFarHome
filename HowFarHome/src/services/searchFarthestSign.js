@@ -1,4 +1,3 @@
-import { findMunicipality } from './nominatim.js'
 import { fetchSignElements } from './overpass.js'
 import { fetchIndexedElements } from './signIndex.js'
 import { extractSigns, normalizeName, pickCandidates } from './signs.js'
@@ -11,7 +10,7 @@ export const SEARCH_STEPS = [
 ]
 
 const SETTLE_DURATION_MS = 450
-const CACHE_PREFIX = 'howfarhome:v2:'
+const CACHE_PREFIX = 'howfarhome:v3:'
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 // Error con un mensaje pensado para enseñárselo a la persona que busca.
@@ -22,19 +21,24 @@ export class SearchError extends Error {
   }
 }
 
-function readCache(query) {
+// Distingue municipios homónimos: la clave lleva las coordenadas.
+function placeKey(place) {
+  return `${normalizeName(place.name)}@${place.lat.toFixed(2)},${place.lng.toFixed(2)}`
+}
+
+function readCache(key) {
   try {
-    const entry = JSON.parse(localStorage.getItem(CACHE_PREFIX + normalizeName(query)))
+    const entry = JSON.parse(localStorage.getItem(CACHE_PREFIX + key))
     return entry && Date.now() - entry.savedAt < CACHE_TTL_MS ? entry.result : null
   } catch {
     return null
   }
 }
 
-function writeCache(query, result) {
+function writeCache(key, result) {
   try {
     localStorage.setItem(
-      CACHE_PREFIX + normalizeName(query),
+      CACHE_PREFIX + key,
       JSON.stringify({ savedAt: Date.now(), result }),
     )
   } catch {
@@ -56,14 +60,7 @@ function wait(ms, signal) {
   })
 }
 
-async function findCandidates(query, signal, onProgress) {
-  onProgress?.(0)
-  const municipality = await findMunicipality(query, { signal })
-  if (!municipality) {
-    throw new SearchError(`No encontramos ningún municipio llamado «${query}» en España.`)
-  }
-
-  onProgress?.(1)
+async function findCandidates(municipality, signal) {
   // Sin índice generado (por ejemplo, en un clon recién hecho) se recurre a Overpass.
   const elements =
     (await fetchIndexedElements(municipality.name, { signal })) ??
@@ -80,20 +77,22 @@ async function findCandidates(query, signal, onProgress) {
     municipality: municipality.name,
     region: municipality.region,
     home,
-    // Distingue municipios homónimos al guardar votos.
-    municipalityKey: `${normalizeName(municipality.name)}@${home.lat.toFixed(2)},${home.lng.toFixed(2)}`,
+    municipalityKey: placeKey(municipality),
     signsFound: signs.length,
     nearestKm: signs.at(-1).distanceKm,
     candidates: pickCandidates(signs),
   }
 }
 
+// Recibe un sitio ya localizado (ver places.js). El paso 0, localizarlo, lo marca quien llama.
 // Los candidatos se guardan en caché; los votos se piden siempre de nuevo.
-export async function searchFarthestSign(query, { signal, onProgress } = {}) {
-  let found = readCache(query)
+export async function searchFarthestSign(place, { signal, onProgress } = {}) {
+  onProgress?.(1)
+  const key = placeKey(place)
+  let found = readCache(key)
   if (!found) {
-    found = await findCandidates(query, signal, onProgress)
-    writeCache(query, found)
+    found = await findCandidates(place, signal)
+    writeCache(key, found)
   }
 
   onProgress?.(2)

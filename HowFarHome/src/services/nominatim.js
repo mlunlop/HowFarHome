@@ -1,26 +1,100 @@
+import { distanceKm } from './geo.js'
+import { normalizeName } from './signs.js'
+
 const BASE_URL = 'https://nominatim.openstreetmap.org'
+// La política de uso de Nominatim pide como máximo una petición por segundo.
+const MIN_INTERVAL_MS = 1000
+const MAX_PLACES = 10
+// Resultados con el mismo nombre a menos de esto son el mismo sitio (nodo y término municipal).
+const SAME_PLACE_KM = 5
+
+const KIND_LABELS = {
+  city: 'Ciudad',
+  town: 'Pueblo',
+  village: 'Pueblo',
+  municipality: 'Municipio',
+  hamlet: 'Aldea',
+  city_district: 'Barrio',
+  isolated_dwelling: 'Aldea',
+  suburb: 'Barrio',
+  neighbourhood: 'Barrio',
+  quarter: 'Barrio',
+}
+
+let lastRequest = 0
 
 async function request(path, params, signal) {
+  const waitMs = lastRequest + MIN_INTERVAL_MS - Date.now()
+  if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs))
+  lastRequest = Date.now()
+
   const query = new URLSearchParams({ format: 'jsonv2', 'accept-language': 'es', ...params })
   const response = await fetch(`${BASE_URL}/${path}?${query}`, { signal })
   if (!response.ok) throw new Error(`Nominatim respondió ${response.status}`)
   return response.json()
 }
 
-export async function findMunicipality(query, { signal } = {}) {
-  const [match] = await request(
-    'search',
-    { q: query, countrycodes: 'es', featureType: 'settlement', addressdetails: 1, limit: 1 },
-    signal,
-  )
-  if (!match) return null
+// En España los municipios son admin_level 8, que Nominatim traduce a place_rank 16.
+// Las parroquias de Asturias o Galicia también son límites administrativos, pero de rango menor.
+const MUNICIPALITY_RANK = 16
 
+// Según la zona, Nominatim guarda la provincia en province, state_district o county.
+function provinceOf(address) {
+  return address.province ?? address.state_district ?? address.county ?? address.state ?? null
+}
+
+function toPlace(match) {
+  const address = match.address ?? {}
+  const region = provinceOf(address)
+  const parent = address.municipality ?? address.city ?? address.town ?? address.village ?? null
   return {
     name: match.name,
-    region: match.address?.province ?? match.address?.state ?? null,
+    region,
+    // Para aldeas, el municipio al que pertenecen ayuda a distinguirlas.
+    detail: parent && parent !== match.name ? parent : null,
+    kind:
+      match.category === 'boundary' && match.place_rank === MUNICIPALITY_RANK
+        ? 'Municipio'
+        : KIND_LABELS[match.addresstype] ?? null,
     lat: Number(match.lat),
     lng: Number(match.lon),
   }
+}
+
+// Todos los sitios de España que encajan con el texto, municipios primero.
+export async function searchPlaces(text, { signal, limit = MAX_PLACES } = {}) {
+  const matches = await request(
+    'search',
+    { q: text, countrycodes: 'es', featureType: 'settlement', addressdetails: 1, limit },
+    signal,
+  )
+
+  const places = []
+  for (const place of matches.map(toPlace)) {
+    const duplicate = places.some(
+      (other) => normalizeName(other.name) === normalizeName(place.name) && distanceKm(other, place) < SAME_PLACE_KM,
+    )
+    if (!duplicate) places.push(place)
+  }
+  return places.sort((a, b) => (b.kind === 'Municipio') - (a.kind === 'Municipio'))
+}
+
+// Un código postal apunta a una zona: buscamos después el pueblo para tener su centro.
+export async function placesForPostcode(postcode, { signal } = {}) {
+  const [match] = await request(
+    'search',
+    { postalcode: postcode, countrycodes: 'es', addressdetails: 1, limit: 1 },
+    signal,
+  )
+  if (!match) return []
+
+  const address = match.address ?? {}
+  const name = address.village ?? address.town ?? address.city ?? address.municipality
+  const region = provinceOf(address)
+  if (!name) return []
+
+  const [place] = await searchPlaces(region ? `${name}, ${region}` : name, { signal, limit: 1 })
+  return [place ?? { name, region, detail: null, kind: null, lat: Number(match.lat), lng: Number(match.lon) }]
 }
 
 export async function describeLocation({ lat, lng }, { signal } = {}) {
@@ -29,6 +103,6 @@ export async function describeLocation({ lat, lng }, { signal } = {}) {
 
   return {
     place: address.city ?? address.town ?? address.village ?? address.municipality ?? null,
-    region: address.province ?? address.state ?? null,
+    region: provinceOf(address),
   }
 }

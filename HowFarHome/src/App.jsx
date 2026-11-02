@@ -1,27 +1,53 @@
 import { useRef, useState } from 'react'
+import ChoosePlace from './screens/ChoosePlace.jsx'
 import Landing from './screens/Landing.jsx'
 import Loading from './screens/Loading.jsx'
 import Result from './screens/Result.jsx'
-import { searchFarthestSign } from './services/searchFarthestSign.js'
+import { isPostcode, resolvePlaces } from './services/places.js'
+import { SearchError, searchFarthestSign } from './services/searchFarthestSign.js'
+
+// Un sitio ya localizado (de la lista de elección) trae coordenadas; el resto hay que buscarlo.
+const isResolvedPlace = (input) => typeof input === 'object' && input.lat !== undefined
 
 function App() {
   const [screen, setScreen] = useState('landing')
   const [query, setQuery] = useState('')
   const [step, setStep] = useState(0)
+  const [choices, setChoices] = useState([])
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const searchRef = useRef(null)
 
-  async function startSearch(name) {
+  async function startSearch(input) {
+    const label = typeof input === 'string' ? input.trim() : input.name
     const search = new AbortController()
     searchRef.current = search
-    setQuery(name)
+    setQuery(label)
     setStep(0)
     setError(null)
     setScreen('loading')
 
     try {
-      const found = await searchFarthestSign(name, {
+      let place = isResolvedPlace(input) ? input : null
+      if (!place) {
+        const places = await resolvePlaces(input, { signal: search.signal })
+        if (!places.length) {
+          throw new SearchError(
+            isPostcode(label)
+              ? `No encontramos ningún pueblo con el código postal ${label}.`
+              : `No encontramos ningún municipio llamado «${label}» en España.`,
+          )
+        }
+        if (places.length > 1) {
+          setChoices(places)
+          setScreen('choose')
+          return
+        }
+        place = places[0]
+      }
+
+      setQuery(place.name)
+      const found = await searchFarthestSign(place, {
         signal: search.signal,
         onProgress: setStep,
       })
@@ -31,7 +57,7 @@ function App() {
       if (err.name === 'AbortError') return
       setError(
         err.userMessage ??
-          'Los servidores de OpenStreetMap están saturados ahora mismo. Inténtalo de nuevo en unos minutos.',
+          'Los servidores de mapas no responden ahora mismo. Inténtalo de nuevo en unos minutos.',
       )
       setScreen('landing')
     }
@@ -50,6 +76,10 @@ function App() {
 
   if (screen === 'loading') {
     return <Loading query={query} step={step} onCancel={cancelSearch} />
+  }
+
+  if (screen === 'choose') {
+    return <ChoosePlace query={query} places={choices} onPick={startSearch} onBack={() => setScreen('landing')} />
   }
 
   if (screen === 'result') {
