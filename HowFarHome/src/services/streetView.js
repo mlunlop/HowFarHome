@@ -24,16 +24,15 @@ async function fetchMetadata(point, signal) {
   return metadata.status === 'OK' ? metadata : null
 }
 
+function approachPoint(sign) {
+  return sign.heading === null ? sign : movePoint(sign, (sign.heading + 180) % 360, LOOK_BACK_KM)
+}
+
 // Devuelve la foto más cercana al cartel, o null si no hay clave o cobertura.
 export async function findPanorama(sign, { signal } = {}) {
   if (!API_KEY) return null
 
-  const viewpoints =
-    sign.heading === null
-      ? [sign]
-      : [movePoint(sign, (sign.heading + 180) % 360, LOOK_BACK_KM), sign]
-
-  for (const viewpoint of viewpoints) {
+  for (const viewpoint of [approachPoint(sign), sign]) {
     const metadata = await fetchMetadata(viewpoint, signal)
     if (!metadata) continue
 
@@ -59,6 +58,19 @@ export function embedUrl({ panoId, heading }) {
     language: 'es',
   })
   return `${EMBED_URL}?${query}`
+}
+
+// Visor sin clave ni cuenta de Google. No está documentado: si Google lo retira, deja de verse
+// la foto y hay que pasar a la Maps Embed API con VITE_GOOGLE_MAPS_API_KEY.
+export function freeEmbedUrl(sign) {
+  const { lat, lng } = approachPoint(sign)
+  const query = new URLSearchParams({
+    layer: 'c',
+    cbll: `${lat},${lng}`,
+    cbp: `11,${sign.heading ?? 0},0,0,0`,
+    output: 'svembed',
+  })
+  return `https://www.google.com/maps?${query}`
 }
 
 // Enlace público de Google Maps: funciona aunque no haya clave.
