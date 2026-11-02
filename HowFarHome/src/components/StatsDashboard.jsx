@@ -38,16 +38,12 @@ function Stat({ label, value, note, icon }) {
   )
 }
 
-function StatsDashboard({ result }) {
-  const {
-    distanceKm,
-    nearestKm,
-    roadDistanceKm,
-    driveMinutes,
-    walkHours,
-    signsFound,
-    bearingDegrees,
-  } = result
+// stats.route es undefined mientras se calcula y null si OSRM no encontró ruta.
+function StatsDashboard({ stats }) {
+  const { distanceKm, nearestKm, route, signsFound, bearingDegrees } = stats
+  const pending = route === undefined
+  const walkHours = (route?.distanceKm ?? distanceKm) / 5
+  const routeValue = (format) => (pending ? '…' : route ? format(route) : '—')
 
   return (
     <section className="flex flex-col overflow-hidden rounded-xl border border-white/15 bg-ground" aria-labelledby="stats-title">
@@ -57,17 +53,17 @@ function StatsDashboard({ result }) {
       <dl className="grid flex-1 grid-cols-2 gap-px bg-white/15">
         <Stat
           label="Por carretera"
-          value={roadDistanceKm === null ? '—' : `${formatKm(roadDistanceKm)} km`}
+          value={routeValue((r) => `${formatKm(r.distanceKm)} km`)}
           note={`${formatKm(distanceKm)} km en línea recta`}
         />
         <Stat
           label="Al volante"
-          value={driveMinutes === null ? '—' : formatDrive(driveMinutes)}
+          value={routeValue((r) => formatDrive(r.durationMinutes))}
           note="Según OSRM"
         />
         <Stat
           label="Andando sin parar"
-          value={formatWalk(walkHours)}
+          value={pending ? '…' : formatWalk(walkHours)}
           note="A 5 km/h, sin dormir"
         />
         <Stat

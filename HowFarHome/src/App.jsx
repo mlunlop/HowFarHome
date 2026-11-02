@@ -31,7 +31,7 @@ function App() {
       if (err.name === 'AbortError') return
       setError(
         err.userMessage ??
-          'Los servicios de mapas no han respondido. Espera un momento e inténtalo de nuevo.',
+          'Los servidores de OpenStreetMap están saturados ahora mismo. Inténtalo de nuevo en unos minutos.',
       )
       setScreen('landing')
     }

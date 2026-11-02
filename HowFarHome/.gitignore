@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Extracto de OSM descargado para generar el índice
+/data/
+# Índice generado con scripts/build_sign_index.py (47 MB)
+/public/sign-index/

@@ -62,11 +62,12 @@ export function embedUrl({ panoId, heading }) {
 
 // Visor sin clave ni cuenta de Google. No está documentado: si Google lo retira, deja de verse
 // la foto y hay que pasar a la Maps Embed API con VITE_GOOGLE_MAPS_API_KEY.
+// Usa el punto exacto: está sobre la vía, mientras que retroceder puede caer fuera de la carretera
+// y este visor no busca la foto más cercana como la API oficial.
 export function freeEmbedUrl(sign) {
-  const { lat, lng } = approachPoint(sign)
   const query = new URLSearchParams({
     layer: 'c',
-    cbll: `${lat},${lng}`,
+    cbll: `${sign.lat},${sign.lng}`,
     cbp: `11,${sign.heading ?? 0},0,0,0`,
     output: 'svembed',
   })

@@ -1,20 +1,17 @@
-import { bearingDegrees } from './geo.js'
-import { describeLocation, findMunicipality } from './nominatim.js'
-import { findRoute } from './osrm.js'
+import { findMunicipality } from './nominatim.js'
 import { fetchSignElements } from './overpass.js'
-import { extractSigns, normalizeName } from './signs.js'
-import { findPanorama } from './streetView.js'
+import { fetchIndexedElements } from './signIndex.js'
+import { extractSigns, normalizeName, pickCandidates } from './signs.js'
+import { fetchVotes } from './votes.js'
 
 export const SEARCH_STEPS = [
   'Localizando el municipio',
-  'Rastreando carteles en OpenStreetMap (1-2 min)',
-  'Midiendo la vuelta a casa',
-  'Buscando la foto en Street View',
+  'Rastreando carteles en OpenStreetMap',
+  'Consultando lo que han verificado otros',
 ]
 
 const SETTLE_DURATION_MS = 450
-const WALKING_KMH = 5
-const CACHE_PREFIX = 'howfarhome:v1:'
+const CACHE_PREFIX = 'howfarhome:v2:'
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 // Error con un mensaje pensado para enseñárselo a la persona que busca.
@@ -59,24 +56,7 @@ function wait(ms, signal) {
   })
 }
 
-// Estos datos enriquecen el resultado: si fallan, el cartel sigue siendo válido.
-async function optional(request, signal) {
-  try {
-    return await request()
-  } catch (error) {
-    if (signal?.aborted) throw error
-    return null
-  }
-}
-
-export async function searchFarthestSign(query, { signal, onProgress } = {}) {
-  const cached = readCache(query)
-  if (cached) {
-    onProgress?.(SEARCH_STEPS.length)
-    await wait(SETTLE_DURATION_MS, signal)
-    return cached
-  }
-
+async function findCandidates(query, signal, onProgress) {
   onProgress?.(0)
   const municipality = await findMunicipality(query, { signal })
   if (!municipality) {
@@ -84,7 +64,10 @@ export async function searchFarthestSign(query, { signal, onProgress } = {}) {
   }
 
   onProgress?.(1)
-  const elements = await fetchSignElements(municipality.name, { signal })
+  // Sin índice generado (por ejemplo, en un clon recién hecho) se recurre a Overpass.
+  const elements =
+    (await fetchIndexedElements(municipality.name, { signal })) ??
+    (await fetchSignElements(municipality.name, { signal }))
   const signs = extractSigns(elements, municipality)
   if (!signs.length) {
     throw new SearchError(
@@ -92,35 +75,34 @@ export async function searchFarthestSign(query, { signal, onProgress } = {}) {
     )
   }
 
-  onProgress?.(2)
-  const [farthest] = signs
-  const nearest = signs.at(-1)
   const home = { lat: municipality.lat, lng: municipality.lng }
-  const [route, location] = await Promise.all([
-    optional(() => findRoute(farthest, home, { signal }), signal),
-    optional(() => describeLocation(farthest, { signal }), signal),
-  ])
+  return {
+    municipality: municipality.name,
+    region: municipality.region,
+    home,
+    // Distingue municipios homónimos al guardar votos.
+    municipalityKey: `${normalizeName(municipality.name)}@${home.lat.toFixed(2)},${home.lng.toFixed(2)}`,
+    signsFound: signs.length,
+    nearestKm: signs.at(-1).distanceKm,
+    candidates: pickCandidates(signs),
+  }
+}
 
-  onProgress?.(3)
-  const panorama = await optional(() => findPanorama(farthest, { signal }), signal)
+// Los candidatos se guardan en caché; los votos se piden siempre de nuevo.
+export async function searchFarthestSign(query, { signal, onProgress } = {}) {
+  let found = readCache(query)
+  if (!found) {
+    found = await findCandidates(query, signal, onProgress)
+    writeCache(query, found)
+  }
+
+  onProgress?.(2)
+  const votes = await fetchVotes(found.municipalityKey, { signal }).catch((error) => {
+    if (signal?.aborted) throw error
+    return {}
+  })
 
   onProgress?.(SEARCH_STEPS.length)
   await wait(SETTLE_DURATION_MS, signal)
-
-  const result = {
-    municipality: municipality.name,
-    region: municipality.region,
-    distanceKm: farthest.distanceKm,
-    nearestKm: nearest.distanceKm,
-    roadDistanceKm: route?.distanceKm ?? null,
-    driveMinutes: route?.durationMinutes ?? null,
-    walkHours: (route?.distanceKm ?? farthest.distanceKm) / WALKING_KMH,
-    signsFound: signs.length,
-    bearingDegrees: bearingDegrees(farthest, home),
-    sign: { ...farthest, place: location?.place ?? null, region: location?.region ?? null },
-    panorama,
-  }
-
-  writeCache(query, result)
-  return result
+  return { ...found, votes }
 }
