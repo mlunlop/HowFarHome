@@ -9,9 +9,10 @@ const VERDICT_LABELS = {
 const SOURCE_LABELS = {
   destination: 'Etiqueta de destino',
   'road-name': 'Nombre de carretera',
+  user: 'Añadido por usuarios',
 }
 
-function CandidateList({ candidates, selectedKey, verdicts, checks, onSelect }) {
+function CandidateList({ candidates, selectedKey, verdicts, checks, onSelect, onAdd }) {
   return (
     <section className="overflow-hidden rounded-xl border border-white/15 bg-ground" aria-labelledby="candidates-title">
       <h2 id="candidates-title" className="border-b border-white/15 px-4 py-3 font-display text-lg font-semibold text-signal">
@@ -40,6 +41,7 @@ function CandidateList({ candidates, selectedKey, verdicts, checks, onSelect }) 
                   <span className="block text-white/60">
                     {VERDICT_LABELS[verdict]}
                     {checks[sign.key]?.status === 'match' && ' · leído en foto'}
+                    {sign.corrections > 0 && ' · posición corregida'}
                   </span>
                 </span>
               </button>
@@ -47,6 +49,14 @@ function CandidateList({ candidates, selectedKey, verdicts, checks, onSelect }) 
           )
         })}
       </ol>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="flex w-full cursor-pointer items-center gap-2 border-t border-white/15 px-4 py-3 text-left text-sm text-white transition-colors hover:bg-white/5"
+      >
+        <span aria-hidden="true" className="text-lg leading-none text-signal">+</span>
+        ¿Conoces uno más lejano? Añadir un cartel
+      </button>
     </section>
   )
 }

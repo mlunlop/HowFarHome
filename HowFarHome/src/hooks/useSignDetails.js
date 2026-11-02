@@ -10,7 +10,8 @@ const settle = (promise) => promise.catch(() => null)
 // Ruta, lugar y foto del candidato elegido. Se piden al seleccionarlo y se recuerdan.
 export function useSignDetails(sign, home) {
   const [details, setDetails] = useState({})
-  const current = details[sign.key]
+  const detailKey = `${sign.key}@${sign.lat},${sign.lng}`
+  const current = details[detailKey]
 
   useEffect(() => {
     if (current) return
@@ -23,12 +24,12 @@ export function useSignDetails(sign, home) {
       settle(findPanorama(sign, options)),
     ]).then(([route, location, panorama]) => {
       if (!controller.signal.aborted) {
-        setDetails((all) => ({ ...all, [sign.key]: { route, location, panorama } }))
+        setDetails((all) => ({ ...all, [detailKey]: { route, location, panorama } }))
       }
     })
 
     return () => controller.abort()
-  }, [sign, home, current])
+  }, [sign, home, current, detailKey])
 
   return current ?? null
 }

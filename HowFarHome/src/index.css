@@ -75,6 +75,27 @@
   background-size: 100% 140px;
 }
 
+/* Mapa de OSM oscurecido para que encaje con la interfaz */
+.leaflet-container {
+  background: var(--color-ground);
+  font-family: var(--font-sans);
+}
+
+.dark-tiles .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+}
+
+.sign-pin span {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: var(--color-signal);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
+  transform: rotate(-45deg);
+}
+
 .dashed-line {
   background-image: linear-gradient(var(--color-signal) 55%, transparent 55%);
   background-size: 100% 28px;

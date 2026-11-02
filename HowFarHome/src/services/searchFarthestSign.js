@@ -1,6 +1,7 @@
 import { fetchSignElements } from './overpass.js'
 import { fetchIndexedElements } from './signIndex.js'
 import { extractSigns, normalizeName, pickCandidates } from './signs.js'
+import { fetchReports } from './reports.js'
 import { fetchVotes } from './votes.js'
 
 export const SEARCH_STEPS = [
@@ -96,12 +97,17 @@ export async function searchFarthestSign(place, { signal, onProgress } = {}) {
   }
 
   onProgress?.(2)
-  const votes = await fetchVotes(found.municipalityKey, { signal }).catch((error) => {
+  // Si Supabase falla, se enseñan los carteles de OSM sin votos ni aportaciones.
+  const fallback = (empty) => (error) => {
     if (signal?.aborted) throw error
-    return {}
-  })
+    return empty
+  }
+  const [votes, reports] = await Promise.all([
+    fetchVotes(found.municipalityKey, { signal }).catch(fallback({})),
+    fetchReports(found.municipalityKey, { signal }).catch(fallback([])),
+  ])
 
   onProgress?.(SEARCH_STEPS.length)
   await wait(SETTLE_DURATION_MS, signal)
-  return { ...found, votes }
+  return { ...found, votes, reports }
 }

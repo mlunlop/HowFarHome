@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import CandidateList from '../components/CandidateList.jsx'
 import StatsDashboard from '../components/StatsDashboard.jsx'
 import StreetViewWindow from '../components/StreetViewWindow.jsx'
 import VerificationPanel from '../components/VerificationPanel.jsx'
 import { usePhotoChecks, useSignDetails } from '../hooks/useSignDetails.js'
 import { bearingDegrees, formatKm } from '../services/geo.js'
+import { applyReports, submitReport } from '../services/reports.js'
+import { signKey } from '../services/signs.js'
 import { castVote, myVote, verdict } from '../services/votes.js'
+
+// El editor lleva el mapa (Leaflet): solo se descarga al abrirlo.
+const SignEditor = lazy(() => import('../components/SignEditor.jsx'))
 
 const COUNT_UP_MS = 1400
 
@@ -39,20 +44,33 @@ function verdictsFor(candidates, votes) {
   return Object.fromEntries(candidates.map((sign) => [sign.key, verdict(votes[sign.key])]))
 }
 
+// Un cartel añadido por usuarios solo puede ser el resultado principal si otros lo confirman.
+function canLead(sign, verdicts) {
+  return verdicts[sign.key] !== 'rejected' && (sign.source !== 'user' || verdicts[sign.key] === 'confirmed')
+}
+
 function Result({ result, onSearchAnother }) {
-  const { municipality, region, home, municipalityKey, candidates, signsFound, nearestKm } = result
+  const { municipality, region, home, municipalityKey, signsFound, nearestKm } = result
   const [votes, setVotes] = useState(result.votes)
+  const [reports, setReports] = useState(result.reports)
   const [voting, setVoting] = useState(false)
   const [voteError, setVoteError] = useState(null)
+  const [editor, setEditor] = useState(null)
+  const [notice, setNotice] = useState(null)
+  // Memorizado: los hooks de detalles y fotos dependen de que los objetos no cambien en cada render.
+  const candidates = useMemo(() => applyReports(result.candidates, reports, home), [result.candidates, reports, home])
   const verdicts = verdictsFor(candidates, votes)
-  const alive = candidates.filter((sign) => verdicts[sign.key] !== 'rejected')
-  const [selectedKey, setSelectedKey] = useState((alive[0] ?? candidates[0]).key)
+  const leaders = candidates.filter((sign) => canLead(sign, verdicts))
+  const [selectedKey, setSelectedKey] = useState(() => {
+    const initial = verdictsFor(candidates, result.votes)
+    return (candidates.find((sign) => canLead(sign, initial)) ?? candidates[0]).key
+  })
 
   const sign = candidates.find((candidate) => candidate.key === selectedKey)
   const details = useSignDetails(sign, home)
   const checks = usePhotoChecks(candidates, municipality)
   const shownKm = useCountUp(sign.distanceKm)
-  const isFarthest = sign.key === alive[0]?.key
+  const isFarthest = sign.key === leaders[0]?.key
 
   const location = details?.location
   const signPlace = location?.place && `${location.place}${location.region ? ` (${location.region})` : ''}`
@@ -69,7 +87,7 @@ function Result({ result, onSearchAnother }) {
 
       // Si lo descartan, pasamos al siguiente candidato que siga en pie.
       if (verdict(tally) === 'rejected') {
-        const next = candidates.find((c) => c.key !== sign.key && verdict(updated[c.key]) !== 'rejected')
+        const next = candidates.find((c) => c.key !== sign.key && canLead(c, verdictsFor(candidates, updated)))
         if (next) setSelectedKey(next.key)
       }
     } catch {
@@ -77,6 +95,21 @@ function Result({ result, onSearchAnother }) {
     } finally {
       setVoting(false)
     }
+  }
+
+  async function handleSaveReport(point, note) {
+    const report =
+      editor === 'add'
+        ? await submitReport(municipalityKey, { kind: 'add', ...point, note })
+        : await submitReport(municipalityKey, { kind: 'move', signKey: sign.key, ...point })
+    setReports((all) => [...all, report])
+    if (editor === 'add') setSelectedKey(signKey(report))
+    setEditor(null)
+    setNotice(
+      editor === 'add'
+        ? 'Gracias. Tu cartel aparece en la lista y será el principal cuando otras personas lo confirmen.'
+        : 'Gracias. La posición del cartel se ha actualizado.',
+    )
   }
 
   return (
@@ -115,7 +148,7 @@ function Result({ result, onSearchAnother }) {
             {signPlace}.
           </p>
         )}
-        {!alive.length && (
+        {!leaders.length && (
           <p className="mt-3 text-white/60">
             Todos los candidatos han sido descartados por otras personas.
           </p>
@@ -132,7 +165,13 @@ function Result({ result, onSearchAnother }) {
             onVote={handleVote}
             voting={voting}
             check={checks[sign.key]}
+            onMove={() => setEditor('move')}
           />
+          {notice && (
+            <p role="status" className="text-sm text-white">
+              {notice}
+            </p>
+          )}
           {voteError && (
             <p role="alert" className="text-sm text-signal">
               {voteError}
@@ -155,6 +194,7 @@ function Result({ result, onSearchAnother }) {
             verdicts={verdicts}
             checks={checks}
             onSelect={setSelectedKey}
+            onAdd={() => setEditor('add')}
           />
         </div>
       </div>
@@ -168,6 +208,19 @@ function Result({ result, onSearchAnother }) {
           Buscar otra localidad
         </button>
       </div>
+
+      {editor && (
+        <Suspense fallback={null}>
+          <SignEditor
+            mode={editor}
+            municipality={municipality}
+            start={editor === 'move' ? sign : home}
+            origin={editor === 'move' ? sign : null}
+            onSave={handleSaveReport}
+            onClose={() => setEditor(null)}
+          />
+        </Suspense>
+      )}
 
       <footer className="mt-6 text-center text-xs text-white/60">
         Datos ©{' '}

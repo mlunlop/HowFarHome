@@ -1,4 +1,11 @@
+import { osmEditUrl } from '../services/reports.js'
 import { embedUrl, freeEmbedUrl, mapsUrl } from '../services/streetView.js'
+
+const SOURCE_PREFIX = {
+  destination: 'Según OpenStreetMap, indica: ',
+  'road-name': 'Deducido de la carretera: ',
+  user: 'Añadido por un usuario: ',
+}
 
 function StreetViewWindow({ municipality, sign, panorama }) {
   return (
@@ -24,11 +31,14 @@ function StreetViewWindow({ municipality, sign, panorama }) {
 
       <footer className="space-y-2 border-t border-white/15 px-4 py-3 text-sm">
         <p className="wrap-break-word text-white">
-          <span className="text-white/60">
-            {sign.source === 'road-name' ? 'Deducido de la carretera: ' : 'Según OpenStreetMap, indica: '}
-          </span>
+          <span className="text-white/60">{SOURCE_PREFIX[sign.source]}</span>
           {sign.text}
         </p>
+        {sign.corrections > 0 && (
+          <p className="text-white/60">
+            Posición corregida por {sign.corrections === 1 ? 'una persona' : `${sign.corrections} personas`}.
+          </p>
+        )}
         {!panorama && (
           <p className="text-white/60">Si no aparece imagen, Google no tiene fotos de este punto.</p>
         )}
@@ -37,8 +47,13 @@ function StreetViewWindow({ municipality, sign, panorama }) {
             {sign.lat.toFixed(5)}, {sign.lng.toFixed(5)}
           </span>
           <span className="flex gap-4">
-            <a href={sign.osmUrl} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
-              Ver en OSM
+            {sign.osmUrl && (
+              <a href={sign.osmUrl} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
+                Ver en OSM
+              </a>
+            )}
+            <a href={osmEditUrl(sign)} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
+              Mejorar en OSM
             </a>
             <a href={mapsUrl(sign, panorama)} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
               Abrir en Google Maps

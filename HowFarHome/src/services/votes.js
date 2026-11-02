@@ -1,47 +1,21 @@
-// Votos «sí hay cartel / no hay cartel». Se comparten en Supabase; sin configurarlo,
-// se guardan solo en este navegador para poder probar la app.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY
+// Votos «sí hay cartel / no hay cartel».
+import { isShared, readJson, supabase, writeJson } from './supabase.js'
+
 const TABLE = 'sign_votes'
 const LOCAL_VOTES = 'howfarhome:votes'
 const MY_VOTES = 'howfarhome:my-votes'
 
-export const votesAreShared = Boolean(SUPABASE_URL && SUPABASE_KEY)
-
-function readJson(key) {
-  try {
-    return JSON.parse(localStorage.getItem(key)) ?? {}
-  } catch {
-    return {}
-  }
-}
-
-function writeJson(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Sin almacenamiento el voto se pierde al recargar, pero la app sigue funcionando.
-  }
-}
-
-function supabase(path, init = {}) {
-  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...init,
-    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', ...init.headers },
-  })
-}
+export const votesAreShared = isShared
 
 // Recuento por cartel: { [signKey]: { yes, no } }
 export async function fetchVotes(municipalityKey, { signal } = {}) {
   let rows
-  if (votesAreShared) {
+  if (isShared) {
     const query = new URLSearchParams({
       select: 'sign_key,vote',
       municipality_key: `eq.${municipalityKey}`,
     })
-    const response = await supabase(`${TABLE}?${query}`, { signal })
-    if (!response.ok) throw new Error(`Supabase respondió ${response.status}`)
-    rows = await response.json()
+    rows = await (await supabase(`${TABLE}?${query}`, { signal })).json()
   } else {
     rows = readJson(LOCAL_VOTES)[municipalityKey] ?? []
   }
@@ -61,13 +35,12 @@ export function myVote(municipalityKey, key) {
 export async function castVote(municipalityKey, key, vote) {
   const row = { municipality_key: municipalityKey, sign_key: key, vote }
 
-  if (votesAreShared) {
-    const response = await supabase(TABLE, {
+  if (isShared) {
+    await supabase(TABLE, {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify(row),
     })
-    if (!response.ok) throw new Error(`Supabase respondió ${response.status}`)
   } else {
     const local = readJson(LOCAL_VOTES)
     local[municipalityKey] = [...(local[municipalityKey] ?? []), row]

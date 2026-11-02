@@ -38,7 +38,7 @@ function PhotoCheck({ check, municipality }) {
   return <p className="border-t border-white/15 pt-4 text-sm text-white/60">{PHOTO_MESSAGES[check.status]}</p>
 }
 
-function VerificationPanel({ municipality, tally, myVote, onVote, voting, check }) {
+function VerificationPanel({ municipality, tally, myVote, onVote, voting, check, onMove }) {
   const yes = tally?.yes ?? 0
   const no = tally?.no ?? 0
 
@@ -77,6 +77,14 @@ function VerificationPanel({ municipality, tally, myVote, onVote, voting, check 
           </button>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={onMove}
+        className="cursor-pointer text-sm text-white/60 underline decoration-signal underline-offset-4 transition-colors hover:text-white"
+      >
+        ¿Está un poco más allá? Corregir la posición
+      </button>
 
       <PhotoCheck check={check} municipality={municipality} />
     </section>
