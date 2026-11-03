@@ -27,3 +27,6 @@ dist-ssr
 /data/
 # Índice generado con scripts/build_sign_index.py (47 MB)
 /public/sign-index/
+
+# Caché de Python
+__pycache__/

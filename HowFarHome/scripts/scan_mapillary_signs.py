@@ -99,6 +99,8 @@ MIN_CROP_WIDTH = 400
 # Con la foto de 2048 px un cartel lejano queda diminuto: entonces se usa la original.
 MIN_THUMB_CROP_WIDTH = 120
 RETRIES = 4
+# Por debajo de este lado (unos 500 m) un recuadro que da error 500 ya no se divide más.
+MIN_SPLIT_DEGREES = 0.006
 
 # Palabras más cortas no se indexan: "de", "la", "a"... no distinguen ningún pueblo.
 # Debe coincidir con MIN_PHOTO_WORD_LENGTH de src/services/signIndex.js
@@ -119,8 +121,8 @@ def token():
     return match.group(1).strip()
 
 
-def fetch(url, binary=False):
-    for attempt in range(RETRIES):
+def fetch(url, binary=False, retries=RETRIES):
+    for attempt in range(retries):
         try:
             with urllib.request.urlopen(url, timeout=60) as response:
                 data = response.read()
@@ -128,34 +130,48 @@ def fetch(url, binary=False):
         except urllib.error.HTTPError as error:
             if error.code == 404:
                 return None
-            if error.code not in (429, 500, 502, 503, 504) or attempt == RETRIES - 1:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == retries - 1:
                 raise
         except (urllib.error.URLError, TimeoutError):
-            if attempt == RETRIES - 1:
+            if attempt == retries - 1:
                 raise
         time.sleep(2 ** attempt * 5)
 
 
-def graph(path, key, **params):
-    return fetch(f"{GRAPH}/{path}?{urllib.parse.urlencode({'access_token': key, **params})}")
+def graph(path, key, retries=RETRIES, **params):
+    return fetch(f"{GRAPH}/{path}?{urllib.parse.urlencode({'access_token': key, **params})}", retries=retries)
+
+
+def split_box(box, key):
+    west, south, east, north = box
+    mid_x, mid_y = (west + east) / 2, (south + north) / 2
+    signs = {}
+    for part in ((west, south, mid_x, mid_y), (mid_x, south, east, mid_y), (west, mid_y, mid_x, north), (mid_x, mid_y, east, north)):
+        signs.update(box_signs(part, key))
+    return signs
 
 
 def box_signs(box, key):
     """Carteles de dirección de un recuadro (oeste, sur, este, norte)."""
     west, south, east, north = box
-    data = graph(
-        "map_features", key,
-        bbox=f"{west:.5f},{south:.5f},{east:.5f},{north:.5f}",
-        fields="id,object_value,geometry",
-        limit=BOX_LIMIT,
-    ) or {}
+    try:
+        data = graph(
+            "map_features", key,
+            bbox=f"{west:.5f},{south:.5f},{east:.5f},{north:.5f}",
+            fields="id,object_value,geometry",
+            limit=BOX_LIMIT,
+            # Un 500 aquí suele repetirse: mejor dividir pronto que esperar a los reintentos.
+            retries=2,
+        ) or {}
+    except urllib.error.HTTPError as error:
+        # Con muchas señales en el recuadro la API se rinde con un error 500 aunque no llegue
+        # al límite: en cuatro trozos más pequeños sí responde.
+        if error.code == 500 and east - west > MIN_SPLIT_DEGREES:
+            return split_box(box, key)
+        raise
     features = data.get("data", [])
     if len(features) >= BOX_LIMIT:
-        mid_x, mid_y = (west + east) / 2, (south + north) / 2
-        signs = {}
-        for part in ((west, south, mid_x, mid_y), (mid_x, south, east, mid_y), (west, mid_y, mid_x, north), (mid_x, mid_y, east, north)):
-            signs.update(box_signs(part, key))
-        return signs
+        return split_box(box, key)
 
     signs = {}
     for feature in features:
@@ -199,10 +215,10 @@ def area_boxes(area, shard=None):
 
 
 def list_signs(area, boxes, key):
-    """Carteles de dirección de los recuadros, o None si se acabó el tiempo antes de terminar."""
+    """(carteles de dirección, ¿están todos los recuadros?), o None si se acabó el tiempo."""
     path = CACHE_DIR / f"signs-{area}.json"
     if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8")), True
 
     # Progreso parcial: recuadros ya leídos y carteles encontrados, para poder reanudar.
     progress_path = CACHE_DIR / f"signs-{area}.partial.json"
@@ -225,10 +241,11 @@ def list_signs(area, boxes, key):
                 continue
             try:
                 signs.update(future.result())
-                done.add(futures[future])
             except Exception as error:  # se reintentará al volver a lanzar el escaneo
                 failed += 1
                 print(f"  recuadro {futures[future]} falló: {str(error)[:80]}", flush=True)
+                continue
+            done.add(futures[future])
             if len(done) % 50 == 0:
                 save_progress()
                 print(f"  recuadros {len(done)}/{len(boxes)} · {len(signs)} carteles de dirección", flush=True)
@@ -242,11 +259,13 @@ def list_signs(area, boxes, key):
         print(f"Se acabó el tiempo: {len(done)}/{len(boxes)} recuadros. Relanza para seguir.", flush=True)
         return None
     if failed:
-        sys.exit(f"{failed} recuadros fallaron. Vuelve a lanzar el escaneo para completarlos.")
+        # Se leen ya los carteles encontrados; los recuadros que fallaron quedan para la próxima vez.
+        print(f"{failed} recuadros fallaron: relanza el escaneo para completarlos.", flush=True)
+        return signs, False
     path.write_text(json.dumps(signs), encoding="utf-8")
     progress_path.unlink(missing_ok=True)
     print(f"  {len(signs)} carteles de dirección en {len(boxes)} recuadros", flush=True)
-    return signs
+    return signs, True
 
 
 def detection_box(geometry):
@@ -336,9 +355,10 @@ def scan(area, shard=None):
     # Si se corta antes de acabar, queda marcado como incompleto para el resumen de GitHub.
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     status_path.write_text("incompleto", encoding="utf-8")
-    signs = list_signs(label, boxes, key)
-    if signs is None:
+    listed = list_signs(label, boxes, key)
+    if listed is None:
         return
+    signs, complete = listed
 
     results_path = CACHE_DIR / f"ocr-{label}.jsonl"
     done = set()
@@ -364,7 +384,8 @@ def scan(area, shard=None):
             if i % 25 == 0 or i == len(pending):
                 rate = (time.time() - started) / i
                 print(f"  {i}/{len(pending)} · {rate:.1f} s/cartel · quedan {rate * (len(pending) - i) / 60:.0f} min", flush=True)
-    status_path.write_text("completo", encoding="utf-8")
+    if complete:
+        status_path.write_text("completo", encoding="utf-8")
 
 
 def normalize(text):

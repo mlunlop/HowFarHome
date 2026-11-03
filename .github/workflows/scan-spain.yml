@@ -11,8 +11,8 @@ on:
         description: Trozos en que se divide España (no lo cambies entre relanzamientos)
         default: "100"
       parallel:
-        description: Trozos a la vez
-        default: "20"
+        description: Trozos a la vez (con más, Mapillary empieza a responder con errores 500)
+        default: "12"
       version:
         description: Cambia este nombre para empezar de cero sin el progreso guardado
         default: v1
@@ -64,7 +64,7 @@ jobs:
           MAPILLARY_TOKEN: ${{ secrets.MAPILLARY_TOKEN }}
           # Se para a las 5 h y guarda lo hecho, antes de que GitHub corte la tarea.
           SCAN_BUDGET_MIN: "300"
-          BOX_WORKERS: "8"
+          BOX_WORKERS: "4"
           PHOTO_WORKERS: "4"
           PYTHONIOENCODING: utf-8
         # Se ocultan los avisos de fotos sin texto; grep sin líneas que mostrar no es un fallo.
