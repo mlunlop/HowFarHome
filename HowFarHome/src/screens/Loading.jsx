@@ -1,3 +1,4 @@
+import Road from '../components/Road.jsx'
 import { SEARCH_STEPS } from '../services/searchFarthestSign.js'
 
 function StepMarker({ state }) {
@@ -12,21 +13,6 @@ function StepMarker({ state }) {
     return <span className="size-2 animate-pulse-dot rounded-full bg-signal" />
   }
   return <span className="size-1.5 rounded-full bg-white/25" />
-}
-
-function Road() {
-  return (
-    <div
-      aria-hidden="true"
-      className="relative min-h-40 flex-1 overflow-hidden mask-t-from-50% [perspective:280px]"
-    >
-      <div className="absolute inset-x-0 -top-[60%] -bottom-[40%] origin-bottom [transform:rotateX(64deg)]">
-        <div className="absolute inset-y-0 left-1/2 w-[min(70vw,560px)] -translate-x-1/2 border-x-2 border-white/35">
-          <div className="road-dashes absolute -top-[140px] -bottom-[140px] left-1/2 w-2 -translate-x-1/2 animate-road" />
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function Loading({ query, step, onCancel }) {
@@ -83,7 +69,7 @@ function Loading({ query, step, onCancel }) {
         </button>
       </div>
 
-      <Road />
+      <Road className="min-h-40 flex-1" />
     </main>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import SignShowcase from '../components/SignShowcase.jsx'
+import Road from '../components/Road.jsx'
+import SignPhoto from '../components/SignPhoto.jsx'
 import SiteFooter from '../components/SiteFooter.jsx'
 import { isPostcode, suggestPlaces } from '../services/places.js'
 import { indexMeta } from '../services/signIndex.js'
@@ -47,18 +48,20 @@ function IndexStats() {
   const places = counts['núcleos de población'] ?? 0
   const format = (value) => value.toLocaleString('es-ES')
 
+  // La fuente va en su propia línea: así ningún separador se queda colgando al partir la línea.
   return (
-    <p className="mt-6 flex flex-wrap gap-x-3 gap-y-1 text-sm text-white/60 max-lg:justify-center">
-      <span>
-        <strong className="font-semibold text-white tabular-nums">{format(signs)}</strong> carteles mapeados
-      </span>
-      <span aria-hidden="true" className="max-sm:hidden">·</span>
-      <span>
-        <strong className="font-semibold text-white tabular-nums">{format(places)}</strong> pueblos y ciudades
-      </span>
-      <span aria-hidden="true" className="max-sm:hidden">·</span>
-      <span>Datos abiertos de OpenStreetMap</span>
-    </p>
+    <div className="mt-6 text-sm text-white/60">
+      <p className="flex flex-wrap gap-x-3 gap-y-1 max-lg:justify-center">
+        <span>
+          <strong className="font-semibold text-white tabular-nums">{format(signs)}</strong> carteles mapeados
+        </span>
+        <span aria-hidden="true" className="max-sm:hidden">·</span>
+        <span>
+          <strong className="font-semibold text-white tabular-nums">{format(places)}</strong> pueblos y ciudades
+        </span>
+      </p>
+      <p className="mt-1">Datos abiertos de OpenStreetMap</p>
+    </div>
   )
 }
 
@@ -123,7 +126,7 @@ function Landing({ initialQuery, error, onSearch }) {
             <span className="font-display text-xl font-bold tracking-tight text-signal">HowFarHome?</span>
           </header>
 
-          <div className="grid flex-1 items-center gap-10 py-8 sm:py-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pb-24">
+          <div className="grid flex-1 items-center gap-10 py-8 sm:py-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
             <div className="flex flex-col max-lg:items-center max-lg:text-center">
               <p className="text-sm font-semibold tracking-widest text-signal uppercase">
                 Cada pueblo tiene un último cartel
@@ -222,13 +225,11 @@ function Landing({ initialQuery, error, onSearch }) {
               <IndexStats />
             </div>
 
-            <SignShowcase onPick={onSearch} />
+            <SignPhoto onPick={onSearch} />
           </div>
 
-          <div
-            aria-hidden="true"
-            className="dashed-line absolute bottom-0 left-1/2 hidden h-[12vh] w-1 -translate-x-1/2 mask-t-from-20% lg:[@media(min-height:720px)]:block"
-          />
+          {/* La carretera lleva de la portada a las preguntas frecuentes */}
+          <Road slow className="-mx-4 -mb-6 h-36 shrink-0 mask-b-from-60% sm:-mx-6 sm:-mb-8 sm:h-48" />
         </section>
 
         <section aria-labelledby="faq-title" className="mx-auto w-full max-w-2xl px-4 pt-12 pb-8">

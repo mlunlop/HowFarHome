@@ -10,7 +10,6 @@
   --animate-rise-in: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-road: road 700ms linear infinite;
   --animate-pulse-dot: pulse-dot 1s ease-in-out infinite;
-  --animate-sign-in: sign-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes screen-in {
     from {
@@ -29,14 +28,6 @@
   @keyframes road {
     from {
       transform: translateY(-140px);
-    }
-  }
-
-  /* El cartel gira sobre su eje horizontal, como si pasara uno nuevo */
-  @keyframes sign-in {
-    from {
-      opacity: 0;
-      transform: rotateX(-75deg);
     }
   }
 
@@ -103,18 +94,6 @@
   background: var(--color-signal);
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
   transform: rotate(-45deg);
-}
-
-/* Cartel de dirección con punta de flecha a la derecha */
-.sign-plate {
-  clip-path: polygon(0 0, calc(100% - 3rem) 0, 100% 50%, calc(100% - 3rem) 100%, 0 100%);
-  border-radius: 6px 0 0 6px;
-  transform-origin: 50% 0;
-}
-
-.dashed-line {
-  background-image: linear-gradient(var(--color-signal) 55%, transparent 55%);
-  background-size: 100% 28px;
 }
 
 @media (prefers-reduced-motion: reduce) {

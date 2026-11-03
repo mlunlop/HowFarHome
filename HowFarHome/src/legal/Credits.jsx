@@ -1,7 +1,24 @@
 import { GITHUB_URL, OWNER, REPO_URL, SITE_NAME } from '../site.js'
 import LegalLayout, { Section } from './LegalLayout.jsx'
 
+// Fotos de la portada: redimensionadas y recortadas, se publican con la misma licencia.
+const photo = (author, imageId, credit) => ({
+  name: `Foto de ${author}`,
+  url: `https://www.mapillary.com/app/?pKey=${imageId}`,
+  license: 'CC BY-SA 4.0',
+  credit: `${credit} Vía Mapillary, redimensionada y recortada.`,
+})
+
 const GROUPS = [
+  {
+    title: 'Fotos de la portada',
+    items: [
+      photo('iago', '534170937962831', 'Cartel de Lugo y Madrid en la A-6, A Coruña.'),
+      photo('msevilla00', '938242003685177', 'Cartel de Valencia en la A-3, Madrid.'),
+      photo('seraq', '1209884594016918', 'Pórtico de Zaragoza y Burgos en la M-40, Madrid.'),
+      photo('m_esp_32', '977200608739263', 'Pórtico de Valencia, Zaragoza y Burgos en la M-50.'),
+    ],
+  },
   {
     title: 'Datos y mapas',
     items: [
