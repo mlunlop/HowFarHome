@@ -68,7 +68,9 @@ jobs:
           PHOTO_WORKERS: "4"
           PYTHONIOENCODING: utf-8
         # Se ocultan los avisos de fotos sin texto; grep sin líneas que mostrar no es un fallo.
-        run: python scripts/scan_mapillary_signs.py scan spain ${{ matrix.shard }}/${{ inputs.shards }} 2>&1 | { grep -v "text detection result is empty" || [ $? -eq 1 ]; }
+        # --line-buffered: sin él, grep retiene el registro y no se ve el progreso en directo.
+        shell: bash -o pipefail {0}
+        run: python scripts/scan_mapillary_signs.py scan spain ${{ matrix.shard }}/${{ inputs.shards }} 2>&1 | { grep --line-buffered -v "text detection result is empty" || [ $? -eq 1 ]; }
 
       - name: Guardar el progreso
         if: always()
