@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import DebugPanel from './components/DebugPanel.jsx'
 import ChoosePlace from './screens/ChoosePlace.jsx'
 import Landing from './screens/Landing.jsx'
 import Loading from './screens/Loading.jsx'
@@ -17,6 +18,7 @@ function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const searchRef = useRef(null)
+  const placeRef = useRef(null)
 
   async function startSearch(input) {
     const label = typeof input === 'string' ? input.trim() : input.name
@@ -47,6 +49,7 @@ function App() {
       }
 
       setQuery(place.name)
+      placeRef.current = place
       const found = await searchFarthestSign(place, {
         signal: search.signal,
         onProgress: setStep,
@@ -74,19 +77,33 @@ function App() {
     setScreen('landing')
   }
 
-  if (screen === 'loading') {
-    return <Loading query={query} step={step} onCancel={cancelSearch} />
+  // TEMPORAL: al cambiar las opciones de pruebas se repite la búsqueda que se está viendo.
+  function rerunSearch() {
+    if (screen === 'result' && placeRef.current) startSearch(placeRef.current)
   }
 
-  if (screen === 'choose') {
-    return <ChoosePlace query={query} places={choices} onPick={startSearch} onBack={() => setScreen('landing')} />
-  }
+  return (
+    <>
+      {renderScreen()}
+      {import.meta.env.DEV && <DebugPanel onChange={rerunSearch} />}
+    </>
+  )
 
-  if (screen === 'result') {
-    return <Result result={result} onSearchAnother={searchAnother} />
-  }
+  function renderScreen() {
+    if (screen === 'loading') {
+      return <Loading query={query} step={step} onCancel={cancelSearch} />
+    }
 
-  return <Landing initialQuery={query} error={error} onSearch={startSearch} />
+    if (screen === 'choose') {
+      return <ChoosePlace query={query} places={choices} onPick={startSearch} onBack={() => setScreen('landing')} />
+    }
+
+    if (screen === 'result') {
+      return <Result result={result} onSearchAnother={searchAnother} />
+    }
+
+    return <Landing initialQuery={query} error={error} onSearch={startSearch} />
+  }
 }
 
 export default App

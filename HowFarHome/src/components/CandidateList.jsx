@@ -10,9 +10,10 @@ const SOURCE_LABELS = {
   destination: 'Etiqueta de destino',
   'road-name': 'Nombre de carretera',
   user: 'Añadido por usuarios',
+  photo: 'Leído en una foto',
 }
 
-function CandidateList({ candidates, selectedKey, verdicts, checks, onSelect, onAdd }) {
+function CandidateList({ candidates, selectedKey, verdicts, onSelect, onAdd }) {
   return (
     <section className="overflow-hidden rounded-xl border border-white/15 bg-ground" aria-labelledby="candidates-title">
       <h2 id="candidates-title" className="border-b border-white/15 px-4 py-3 font-display text-lg font-semibold text-signal">
@@ -37,10 +38,13 @@ function CandidateList({ candidates, selectedKey, verdicts, checks, onSelect, on
                   {formatKm(sign.distanceKm)} km
                 </span>
                 <span className="min-w-0 flex-1 text-sm">
-                  <span className="block truncate text-white">{SOURCE_LABELS[sign.source]}</span>
+                  <span className="block truncate text-white">
+                    {SOURCE_LABELS[sign.source]}
+                    {sign.confidence && <span className="text-white/60"> · confianza {sign.confidence}</span>}
+                  </span>
                   <span className="block text-white/60">
                     {VERDICT_LABELS[verdict]}
-                    {checks[sign.key]?.status === 'match' && ' · leído en foto'}
+                    {sign.improbable && ' · muy lejos para su tamaño'}
                     {sign.corrections > 0 && ' · posición corregida'}
                   </span>
                 </span>

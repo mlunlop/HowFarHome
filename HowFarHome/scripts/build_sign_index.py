@@ -31,6 +31,8 @@ KEPT_TAGS = DESTINATION_KEYS + ("destination:ref", "ref", "highway", "name", "to
 ROAD_NAME = re.compile(r"^(carretera|ctra)\b")
 JOINTS = (" de ", " a ", " hacia ")
 MAX_NAME_WORDS = 6
+# Palabras por las que se corta un nombre largo para obtener su forma abreviada.
+SHORT_NAME_CUTS = {"de", "del", "la", "el", "los", "las"}
 
 
 def normalize(text):
@@ -67,6 +69,12 @@ def road_name_keys(name):
     return keys
 
 
+def short_names(name):
+    """Formas abreviadas: 'la roda de andalucia' -> 'la roda'; 'sevilla la nueva' -> 'sevilla'."""
+    words = name.split()
+    return {" ".join(words[:i]) for i, word in enumerate(words) if i > 0 and word in SHORT_NAME_CUTS}
+
+
 def rounded(location):
     return [round(location.lat, 6), round(location.lon, 6)]
 
@@ -98,12 +106,18 @@ class SignCollector(osmium.SimpleHandler):
             self.counts["nodos con destino"] += 1
 
         if tags.get("place") in PLACE_TYPES and "name" in tags:
-            element_id = f"p{n.id}"
-            element = {"t": "n", "id": n.id, "tg": {"place": tags["place"], "name": tags["name"]}, "g": [rounded(n.location)]}
+            place_tags = {"place": tags["place"], "name": tags["name"]}
+            if "population" in tags:
+                place_tags["population"] = tags["population"]
+            element = {"t": "n", "id": n.id, "tg": place_tags, "g": [rounded(n.location)]}
             for variant in tags["name"].split("/"):
                 if key := normalize(variant):
-                    self.add(key, element_id, element)
+                    self.add(key, f"p{n.id}", element)
                     self.place_names.add(key)
+                    # "La Roda de Andalucía" aparece en los carteles como "La Roda".
+                    alias = {**element, "tg": {**place_tags, "alias": "1"}}
+                    for short in short_names(key):
+                        self.add(short, f"a{n.id}", alias)
             self.counts["núcleos de población"] += 1
 
     def way(self, w):

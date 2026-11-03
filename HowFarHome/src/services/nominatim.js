@@ -56,6 +56,7 @@ function toPlace(match) {
       match.category === 'boundary' && match.place_rank === MUNICIPALITY_RANK
         ? 'Municipio'
         : KIND_LABELS[match.addresstype] ?? null,
+    population: Number(match.extratags?.population) || null,
     lat: Number(match.lat),
     lng: Number(match.lon),
   }
@@ -65,7 +66,7 @@ function toPlace(match) {
 export async function searchPlaces(text, { signal, limit = MAX_PLACES } = {}) {
   const matches = await request(
     'search',
-    { q: text, countrycodes: 'es', featureType: 'settlement', addressdetails: 1, limit },
+    { q: text, countrycodes: 'es', featureType: 'settlement', addressdetails: 1, extratags: 1, limit },
     signal,
   )
 

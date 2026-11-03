@@ -1,0 +1,129 @@
+# Escanea con OCR los carteles de dirección de Mapillary en toda España, repartido entre
+# muchas máquinas de GitHub a la vez. Se lanza a mano desde la pestaña Actions.
+# Si algún trozo no acaba a tiempo, basta con lanzarlo otra vez con la misma versión:
+# cada trozo guarda su progreso en la caché y los ya terminados acaban en un minuto.
+name: Escanear carteles de España
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: Trozos en que se divide España (no lo cambies entre relanzamientos)
+        default: "100"
+      parallel:
+        description: Trozos a la vez
+        default: "20"
+      version:
+        description: Cambia este nombre para empezar de cero sin el progreso guardado
+        default: v1
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.list.outputs.shards }}
+    steps:
+      - id: list
+        run: echo "shards=$(python3 -c 'import json; print(json.dumps(list(range(1, ${{ inputs.shards }} + 1))))')" >> "$GITHUB_OUTPUT"
+
+  scan:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(inputs.parallel) }}
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    defaults:
+      run:
+        working-directory: HowFarHome
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: HowFarHome/scripts/requirements-scan.txt
+
+      - run: pip install -r scripts/requirements-scan.txt
+
+      - name: Recuperar el progreso de lanzamientos anteriores
+        uses: actions/cache/restore@v4
+        with:
+          path: HowFarHome/data/mapillary
+          key: scan-${{ inputs.version }}-${{ inputs.shards }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: scan-${{ inputs.version }}-${{ inputs.shards }}-${{ matrix.shard }}-
+
+      - name: Escanear el trozo ${{ matrix.shard }} de ${{ inputs.shards }}
+        env:
+          MAPILLARY_TOKEN: ${{ secrets.MAPILLARY_TOKEN }}
+          # Se para a las 5 h y guarda lo hecho, antes de que GitHub corte la tarea.
+          SCAN_BUDGET_MIN: "300"
+          BOX_WORKERS: "8"
+          PHOTO_WORKERS: "4"
+          PYTHONIOENCODING: utf-8
+        # Se ocultan los avisos de fotos sin texto; grep sin líneas que mostrar no es un fallo.
+        run: python scripts/scan_mapillary_signs.py scan spain ${{ matrix.shard }}/${{ inputs.shards }} 2>&1 | { grep -v "text detection result is empty" || [ $? -eq 1 ]; }
+
+      - name: Guardar el progreso
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: HowFarHome/data/mapillary
+          key: scan-${{ inputs.version }}-${{ inputs.shards }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ocr-${{ matrix.shard }}
+          path: |
+            HowFarHome/data/mapillary/ocr-*.jsonl
+            HowFarHome/data/mapillary/status-*.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+  export:
+    needs: scan
+    if: always()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: HowFarHome
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ocr-*
+          merge-multiple: true
+          path: HowFarHome/data/mapillary
+
+      - name: Generar el índice de fotos
+        run: python3 scripts/scan_mapillary_signs.py export
+
+      - name: Resumen
+        run: |
+          total=${{ inputs.shards }}
+          done=$(grep -l '^completo$' data/mapillary/status-*.txt 2>/dev/null | wc -l)
+          signs=$(cat data/mapillary/ocr-*.jsonl 2>/dev/null | wc -l)
+          {
+            echo "## Escaneo de España"
+            echo "- Trozos completos: **$done de $total**"
+            echo "- Carteles leídos: **$signs**"
+            if [ "$done" -lt "$total" ]; then
+              echo "- Faltan trozos: vuelve a lanzar el workflow con la misma versión para terminarlos."
+            else
+              echo "- Todo listo: descarga el artefacto **photo-index** y descomprímelo en HowFarHome/public/sign-index/photo."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: photo-index
+          path: HowFarHome/public/sign-index/photo
+          retention-days: 30

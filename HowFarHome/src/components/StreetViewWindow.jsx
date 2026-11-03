@@ -5,6 +5,7 @@ const SOURCE_PREFIX = {
   destination: 'Según OpenStreetMap, indica: ',
   'road-name': 'Deducido de la carretera: ',
   user: 'Añadido por un usuario: ',
+  photo: 'Leído por OCR en una foto: ',
 }
 
 function StreetViewWindow({ municipality, sign, panorama }) {
@@ -50,6 +51,11 @@ function StreetViewWindow({ municipality, sign, panorama }) {
             {sign.osmUrl && (
               <a href={sign.osmUrl} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
                 Ver en OSM
+              </a>
+            )}
+            {sign.imageId && (
+              <a href={`https://www.mapillary.com/app/?pKey=${sign.imageId}`} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">
+                Foto en Mapillary
               </a>
             )}
             <a href={osmEditUrl(sign)} target="_blank" rel="noreferrer" className="underline decoration-signal underline-offset-4 transition-colors hover:text-white">

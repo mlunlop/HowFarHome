@@ -3,7 +3,7 @@ import CandidateList from '../components/CandidateList.jsx'
 import StatsDashboard from '../components/StatsDashboard.jsx'
 import StreetViewWindow from '../components/StreetViewWindow.jsx'
 import VerificationPanel from '../components/VerificationPanel.jsx'
-import { usePhotoChecks, useSignDetails } from '../hooks/useSignDetails.js'
+import { useSignDetails } from '../hooks/useSignDetails.js'
 import { bearingDegrees, formatKm } from '../services/geo.js'
 import { applyReports, submitReport } from '../services/reports.js'
 import { signKey } from '../services/signs.js'
@@ -44,9 +44,22 @@ function verdictsFor(candidates, votes) {
   return Object.fromEntries(candidates.map((sign) => [sign.key, verdict(votes[sign.key])]))
 }
 
-// Un cartel añadido por usuarios solo puede ser el resultado principal si otros lo confirman.
+// Para ser el resultado principal hace falta confianza: una foto donde se lee el nombre, una
+// etiqueta de destino de OSM o votos a favor. Los añadidos por usuarios necesitan confirmación.
 function canLead(sign, verdicts) {
-  return verdicts[sign.key] !== 'rejected' && (sign.source !== 'user' || verdicts[sign.key] === 'confirmed')
+  const verdict = verdicts[sign.key]
+  if (verdict === 'rejected') return false
+  if (verdict === 'confirmed') return true
+  return sign.source !== 'user' && sign.confidence !== 'baja'
+}
+
+// El más lejano que puede liderar; si ninguno puede, el más lejano no descartado.
+function leaderOf(candidates, verdicts) {
+  return (
+    candidates.find((sign) => canLead(sign, verdicts)) ??
+    candidates.find((sign) => verdicts[sign.key] !== 'rejected') ??
+    candidates[0]
+  )
 }
 
 function Result({ result, onSearchAnother }) {
@@ -60,17 +73,16 @@ function Result({ result, onSearchAnother }) {
   // Memorizado: los hooks de detalles y fotos dependen de que los objetos no cambien en cada render.
   const candidates = useMemo(() => applyReports(result.candidates, reports, home), [result.candidates, reports, home])
   const verdicts = verdictsFor(candidates, votes)
-  const leaders = candidates.filter((sign) => canLead(sign, verdicts))
-  const [selectedKey, setSelectedKey] = useState(() => {
-    const initial = verdictsFor(candidates, result.votes)
-    return (candidates.find((sign) => canLead(sign, initial)) ?? candidates[0]).key
-  })
+  const [selectedKey, setSelectedKey] = useState(
+    () => leaderOf(candidates, verdictsFor(candidates, result.votes)).key,
+  )
 
   const sign = candidates.find((candidate) => candidate.key === selectedKey)
   const details = useSignDetails(sign, home)
-  const checks = usePhotoChecks(candidates, municipality)
+  const leaders = candidates.filter((candidate) => canLead(candidate, verdicts))
   const shownKm = useCountUp(sign.distanceKm)
   const isFarthest = sign.key === leaders[0]?.key
+  const trusted = canLead(sign, verdicts)
 
   const location = details?.location
   const signPlace = location?.place && `${location.place}${location.region ? ` (${location.region})` : ''}`
@@ -79,7 +91,7 @@ function Result({ result, onSearchAnother }) {
     setVoting(true)
     setVoteError(null)
     try {
-      await castVote(municipalityKey, sign.key, value)
+      await castVote(municipalityKey, sign.key, value, { source: sign.source, score: sign.score })
       const tally = { ...(votes[sign.key] ?? { yes: 0, no: 0 }) }
       tally[value > 0 ? 'yes' : 'no']++
       const updated = { ...votes, [sign.key]: tally }
@@ -87,8 +99,7 @@ function Result({ result, onSearchAnother }) {
 
       // Si lo descartan, pasamos al siguiente candidato que siga en pie.
       if (verdict(tally) === 'rejected') {
-        const next = candidates.find((c) => c.key !== sign.key && canLead(c, verdictsFor(candidates, updated)))
-        if (next) setSelectedKey(next.key)
+        setSelectedKey(leaderOf(candidates, verdictsFor(candidates, updated)).key)
       }
     } catch {
       setVoteError('No se pudo guardar el voto. Inténtalo de nuevo.')
@@ -126,7 +137,11 @@ function Result({ result, onSearchAnother }) {
 
       <section className="mt-10 sm:mt-14">
         <h1 className="text-lg text-pretty text-white sm:text-xl">
-          {isFarthest ? 'El cartel más lejano que menciona' : 'Este candidato a cartel de'}{' '}
+          {!trusted
+            ? 'Una pista sin confirmar de un cartel de'
+            : isFarthest
+              ? 'El cartel más lejano que menciona'
+              : 'Este candidato a cartel de'}{' '}
           <strong className="font-semibold wrap-break-word">
             {municipality}
             {region && region !== municipality && ` (${region})`}
@@ -164,7 +179,6 @@ function Result({ result, onSearchAnother }) {
             myVote={myVote(municipalityKey, sign.key)}
             onVote={handleVote}
             voting={voting}
-            check={checks[sign.key]}
             onMove={() => setEditor('move')}
           />
           {notice && (
@@ -192,7 +206,6 @@ function Result({ result, onSearchAnother }) {
             candidates={candidates}
             selectedKey={selectedKey}
             verdicts={verdicts}
-            checks={checks}
             onSelect={setSelectedKey}
             onAdd={() => setEditor('add')}
           />

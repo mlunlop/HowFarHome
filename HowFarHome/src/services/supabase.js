@@ -26,7 +26,8 @@ export function writeJson(key, value) {
 export class SupabaseError extends Error {
   constructor(status, body) {
     super(`Supabase respondió ${status}`)
-    this.rateLimited = body?.code === 'P0001'
+    this.code = body?.code ?? null
+    this.rateLimited = this.code === 'P0001'
   }
 }
 

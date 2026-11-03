@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { describeLocation } from '../services/nominatim.js'
 import { findRoute } from '../services/osrm.js'
-import { checkSignInPhotos, photoCheckAvailable } from '../services/photoCheck.js'
 import { findPanorama } from '../services/streetView.js'
 
 // Estos datos enriquecen el candidato: si un servicio falla, se queda en null.
@@ -32,29 +31,4 @@ export function useSignDetails(sign, home) {
   }, [sign, home, current, detailKey])
 
   return current ?? null
-}
-
-// Comprueba en segundo plano, uno tras otro, si las fotos de Mapillary muestran el nombre.
-export function usePhotoChecks(candidates, municipality) {
-  const [checks, setChecks] = useState({})
-
-  useEffect(() => {
-    if (!photoCheckAvailable) return
-    const controller = new AbortController()
-
-    ;(async () => {
-      for (const sign of candidates) {
-        if (controller.signal.aborted) return
-        setChecks((all) => ({ ...all, [sign.key]: { status: 'checking' } }))
-        const check = await checkSignInPhotos(sign, municipality, { signal: controller.signal })
-          .catch(() => ({ status: 'error' }))
-        if (controller.signal.aborted) return
-        setChecks((all) => ({ ...all, [sign.key]: check }))
-      }
-    })()
-
-    return () => controller.abort()
-  }, [candidates, municipality])
-
-  return checks
 }

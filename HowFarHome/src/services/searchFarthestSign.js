@@ -1,3 +1,4 @@
+import { debugOptions, filterBySource } from './debugOptions.js'
 import { fetchSignElements } from './overpass.js'
 import { fetchIndexedElements } from './signIndex.js'
 import { extractSigns, normalizeName, pickCandidates } from './signs.js'
@@ -11,7 +12,7 @@ export const SEARCH_STEPS = [
 ]
 
 const SETTLE_DURATION_MS = 450
-const CACHE_PREFIX = 'howfarhome:v3:'
+const CACHE_PREFIX = 'howfarhome:v4:'
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 // Error con un mensaje pensado para enseñárselo a la persona que busca.
@@ -61,12 +62,12 @@ function wait(ms, signal) {
   })
 }
 
-async function findCandidates(municipality, signal) {
+async function findCandidates(municipality, sources, signal) {
   // Sin índice generado (por ejemplo, en un clon recién hecho) se recurre a Overpass.
   const elements =
     (await fetchIndexedElements(municipality.name, { signal })) ??
     (await fetchSignElements(municipality.name, { signal }))
-  const signs = extractSigns(elements, municipality)
+  const signs = extractSigns(filterBySource(elements, sources), municipality)
   if (!signs.length) {
     throw new SearchError(
       `OpenStreetMap no tiene ningún cartel de carretera que mencione ${municipality.name}.`,
@@ -89,10 +90,11 @@ async function findCandidates(municipality, signal) {
 // Los candidatos se guardan en caché; los votos se piden siempre de nuevo.
 export async function searchFarthestSign(place, { signal, onProgress } = {}) {
   onProgress?.(1)
-  const key = placeKey(place)
+  const { sources, shared } = debugOptions()
+  const key = sources === 'all' ? placeKey(place) : `${sources}:${placeKey(place)}`
   let found = readCache(key)
   if (!found) {
-    found = await findCandidates(place, signal)
+    found = await findCandidates(place, sources, signal)
     writeCache(key, found)
   }
 
@@ -102,10 +104,12 @@ export async function searchFarthestSign(place, { signal, onProgress } = {}) {
     if (signal?.aborted) throw error
     return empty
   }
-  const [votes, reports] = await Promise.all([
-    fetchVotes(found.municipalityKey, { signal }).catch(fallback({})),
-    fetchReports(found.municipalityKey, { signal }).catch(fallback([])),
-  ])
+  const [votes, reports] = shared
+    ? await Promise.all([
+        fetchVotes(found.municipalityKey, { signal }).catch(fallback({})),
+        fetchReports(found.municipalityKey, { signal }).catch(fallback([])),
+      ])
+    : [{}, []]
 
   onProgress?.(SEARCH_STEPS.length)
   await wait(SETTLE_DURATION_MS, signal)

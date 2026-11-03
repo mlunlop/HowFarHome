@@ -1,44 +1,6 @@
-import { photoCheckAvailable } from '../services/photoCheck.js'
 import { votesAreShared } from '../services/votes.js'
 
-const PHOTO_MESSAGES = {
-  checking: 'Buscando el cartel en fotos de Mapillary…',
-  'no-match': 'Hay fotos de Mapillary aquí, pero no hemos podido leer el nombre en ellas.',
-  'no-photos': 'Mapillary no tiene fotos de este punto.',
-  error: 'No se pudo completar la lectura de fotos de Mapillary.',
-}
-
-function PhotoCheck({ check, municipality }) {
-  if (!photoCheckAvailable || !check) return null
-
-  if (check.status === 'match') {
-    return (
-      <div className="flex gap-3 border-t border-white/15 pt-4">
-        <img
-          src={check.crop}
-          alt={`Recorte del cartel donde se lee ${municipality}`}
-          className="h-16 w-28 shrink-0 rounded object-cover"
-        />
-        <p className="text-sm text-white">
-          <span className="font-semibold text-signal">Leído en una foto. </span>
-          El OCR encontró «{municipality}» en un cartel fotografiado aquí.{' '}
-          <a
-            href={`https://www.mapillary.com/app/?pKey=${check.imageId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-white/60 underline decoration-signal underline-offset-4 hover:text-white"
-          >
-            Ver foto en Mapillary
-          </a>
-        </p>
-      </div>
-    )
-  }
-
-  return <p className="border-t border-white/15 pt-4 text-sm text-white/60">{PHOTO_MESSAGES[check.status]}</p>
-}
-
-function VerificationPanel({ municipality, tally, myVote, onVote, voting, check, onMove }) {
+function VerificationPanel({ municipality, tally, myVote, onVote, voting, onMove }) {
   const yes = tally?.yes ?? 0
   const no = tally?.no ?? 0
 
@@ -86,7 +48,6 @@ function VerificationPanel({ municipality, tally, myVote, onVote, voting, check,
         ¿Está un poco más allá? Corregir la posición
       </button>
 
-      <PhotoCheck check={check} municipality={municipality} />
     </section>
   )
 }

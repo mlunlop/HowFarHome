@@ -1,0 +1,8 @@
+# Dependencias de scripts/scan_mapillary_signs.py (las instala también GitHub Actions).
+rapidocr==3.10.0
+onnxruntime==1.31.1
+opencv-python-headless==5.0.0.93
+numpy==2.5.4
+mapbox-vector-tile==2.2.0
+protobuf==6.33.6
+pillow==13.0.0

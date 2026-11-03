@@ -32,15 +32,24 @@ export function myVote(municipalityKey, key) {
   return readJson(MY_VOTES)[`${municipalityKey}|${key}`] ?? null
 }
 
-export async function castVote(municipalityKey, key, vote) {
+// source y score permiten medir qué indicios aciertan (ver supabase/003_vote_sources.sql).
+export async function castVote(municipalityKey, key, vote, { source = null, score = null } = {}) {
   const row = { municipality_key: municipalityKey, sign_key: key, vote }
-
-  if (isShared) {
-    await supabase(TABLE, {
+  const insert = (body) =>
+    supabase(TABLE, {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify(row),
+      body: JSON.stringify(body),
     })
+
+  if (isShared) {
+    try {
+      await insert({ ...row, source, score })
+    } catch (error) {
+      // Sin la migración 003 esas columnas no existen: el voto se guarda igualmente.
+      if (error.code !== 'PGRST204') throw error
+      await insert(row)
+    }
   } else {
     const local = readJson(LOCAL_VOTES)
     local[municipalityKey] = [...(local[municipalityKey] ?? []), row]
