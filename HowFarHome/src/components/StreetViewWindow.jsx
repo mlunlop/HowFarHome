@@ -1,3 +1,4 @@
+import { allow, useConsent } from '../services/consent.js'
 import { osmEditUrl } from '../services/reports.js'
 import { embedUrl, freeEmbedUrl, mapsUrl } from '../services/streetView.js'
 
@@ -9,6 +10,8 @@ const SOURCE_PREFIX = {
 }
 
 function StreetViewWindow({ municipality, sign, panorama }) {
+  const consent = useConsent()
+
   return (
     <section className="overflow-hidden rounded-xl border border-white/15 bg-ground" aria-labelledby="street-view-title">
       <header className="flex items-center justify-between gap-3 border-b border-white/15 px-4 py-3">
@@ -19,15 +22,34 @@ function StreetViewWindow({ municipality, sign, panorama }) {
       </header>
 
       <div className="relative aspect-video bg-neutral-950">
-        <iframe
-          key={sign.key}
-          title={`Street View del cartel de ${municipality}`}
-          src={panorama ? embedUrl(panorama) : freeEmbedUrl(sign)}
-          className="absolute inset-0 size-full"
-          loading="lazy"
-          allowFullScreen
-          referrerPolicy="no-referrer-when-downgrade"
-        />
+        {consent?.external ? (
+          <iframe
+            key={sign.key}
+            title={`Street View del cartel de ${municipality}`}
+            src={panorama ? embedUrl(panorama) : freeEmbedUrl(sign)}
+            className="absolute inset-0 size-full"
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        ) : (
+          // Google instala cookies al mostrar Street View: no se carga sin permiso.
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <p className="max-w-sm text-sm text-pretty text-white/70">
+              Street View lo sirve Google, que instala sus propias cookies. Cárgalo para ver la foto del cartel.
+            </p>
+            <button
+              type="button"
+              onClick={() => allow('external')}
+              className="h-11 cursor-pointer rounded-lg bg-signal px-5 text-sm font-semibold text-black transition-[background-color,transform] hover:bg-white active:scale-[0.98]"
+            >
+              Cargar Street View
+            </button>
+            <a href="/cookies/" className="text-xs text-white/60 underline decoration-signal underline-offset-4 hover:text-white">
+              Política de cookies
+            </a>
+          </div>
+        )}
       </div>
 
       <footer className="space-y-2 border-t border-white/15 px-4 py-3 text-sm">

@@ -1,3 +1,5 @@
+import SiteFooter from '../components/SiteFooter.jsx'
+
 function ChoosePlace({ query, places, onPick, onBack }) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl animate-screen-in flex-col px-4 py-6 sm:py-8">
@@ -42,6 +44,8 @@ function ChoosePlace({ query, places, onPick, onBack }) {
           ¿No aparece? Prueba con tu código postal o añade la provincia, por ejemplo «{query}, Albacete».
         </p>
       </section>
+
+      <SiteFooter className="mt-auto pt-16" />
     </main>
   )
 }

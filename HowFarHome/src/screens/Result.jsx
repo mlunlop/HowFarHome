@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import CandidateList from '../components/CandidateList.jsx'
+import SiteFooter from '../components/SiteFooter.jsx'
 import StatsDashboard from '../components/StatsDashboard.jsx'
 import StreetViewWindow from '../components/StreetViewWindow.jsx'
 import VerificationPanel from '../components/VerificationPanel.jsx'
@@ -235,17 +236,17 @@ function Result({ result, onSearchAnother }) {
         </Suspense>
       )}
 
-      <footer className="mt-6 text-center text-xs text-white/60">
+      <SiteFooter className="mt-6">
         Datos ©{' '}
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-white">
           colaboradores de OpenStreetMap
         </a>
         {' '}y{' '}
-        <a href="https://www.mapillary.com" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">
+        <a href="https://www.mapillary.com" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-white">
           Mapillary
         </a>
         . Solo aparecen los carteles que alguien ha mapeado.
-      </footer>
+      </SiteFooter>
     </main>
   )
 }

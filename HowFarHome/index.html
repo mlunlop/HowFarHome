@@ -2,17 +2,103 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#141416" />
+    <title>HowFarHome? · El cartel de carretera más lejano de tu pueblo</title>
     <meta
       name="description"
-      content="Encuentra el cartel de carretera más lejano que menciona tu municipio."
+      content="Escribe tu pueblo o código postal y descubre el cartel de carretera más lejano de España que lo menciona: a cuántos kilómetros está y cómo se ve en Street View. Gratis."
     />
-    <title>HowFarHome?</title>
+    <meta name="keywords" content="cartel de carretera, señal de tráfico, mi pueblo, distancia, kilómetros, Street View, OpenStreetMap, España, municipio, código postal" />
+    <meta name="author" content="mlunlop" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="HowFarHome?" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:title" content="¿Cuál es el cartel más lejano que lleva a tu pueblo?" />
+    <meta property="og:description" content="Busca tu municipio y descubre a cuántos kilómetros está el último cartel de carretera de España que lo menciona." />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="HowFarHome?: el cartel de carretera más lejano de tu pueblo" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="¿Cuál es el cartel más lejano que lleva a tu pueblo?" />
+    <meta name="twitter:description" content="Busca tu municipio y descubre a cuántos kilómetros está el último cartel de carretera que lo menciona." />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "%SITE_URL%/#website",
+            "url": "%SITE_URL%/",
+            "name": "HowFarHome?",
+            "inLanguage": "es-ES"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "HowFarHome?",
+            "url": "%SITE_URL%/",
+            "description": "Encuentra el cartel de carretera más lejano de España que menciona tu municipio, con la distancia y la imagen de Street View.",
+            "applicationCategory": "TravelApplication",
+            "operatingSystem": "Cualquiera (navegador web)",
+            "inLanguage": "es-ES",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+            "author": { "@type": "Person", "name": "mlunlop", "url": "https://github.com/mlunlop" }
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "¿Cómo encuentra HowFarHome? el cartel más lejano de mi pueblo?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Busca en OpenStreetMap las señales de dirección cuyo destino menciona tu municipio y en fotos de Mapillary leídas con OCR, calcula la distancia hasta tu pueblo y te muestra el más lejano con su imagen de Street View."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Por qué no aparece el cartel que yo conozco?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Solo aparecen los carteles que alguien ha mapeado en OpenStreetMap o fotografiado en Mapillary. Puedes añadirlo desde la propia web o mapearlo en OpenStreetMap."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Es gratis?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sí. No hace falta registrarse y funciona con cualquier municipio o código postal de España."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Puedo votar si un cartel existe de verdad?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sí. Cada candidato tiene un voto de sí o no y puedes corregir su posición en el mapa; los votos ayudan a decidir cuál es el cartel principal."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <noscript>
+        <h1>HowFarHome? · El cartel de carretera más lejano de tu pueblo</h1>
+        <p>Esta web necesita JavaScript para buscar el cartel de carretera más lejano que menciona tu municipio.</p>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

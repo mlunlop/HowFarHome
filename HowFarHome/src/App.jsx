@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import CookieBanner from './components/CookieBanner.jsx'
 import DebugPanel from './components/DebugPanel.jsx'
 import ChoosePlace from './screens/ChoosePlace.jsx'
 import Landing from './screens/Landing.jsx'
@@ -19,6 +20,14 @@ function App() {
   const [error, setError] = useState(null)
   const searchRef = useRef(null)
   const placeRef = useRef(null)
+
+  // Título de la pestaña con el resultado: queda mejor al compartir o guardar en marcadores.
+  useEffect(() => {
+    document.title =
+      screen === 'result' && result
+        ? `${result.municipality}: su cartel más lejano · HowFarHome?`
+        : 'HowFarHome? · El cartel de carretera más lejano de tu pueblo'
+  }, [screen, result])
 
   async function startSearch(input) {
     const label = typeof input === 'string' ? input.trim() : input.name
@@ -85,6 +94,7 @@ function App() {
   return (
     <>
       {renderScreen()}
+      <CookieBanner />
       {import.meta.env.DEV && <DebugPanel onChange={rerunSearch} />}
     </>
   )

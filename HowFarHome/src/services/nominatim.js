@@ -7,6 +7,11 @@ const MIN_INTERVAL_MS = 1000
 const MAX_PLACES = 10
 // Resultados con el mismo nombre a menos de esto son el mismo sitio (nodo y término municipal).
 const SAME_PLACE_KM = 5
+// El centro de un término municipal grande puede quedar lejos del nodo de la ciudad
+// (Zaragoza: 5 km). Junto a un municipio, el núcleo homónimo cercano es el mismo sitio.
+const SAME_MUNICIPALITY_KM = 15
+// Nombres que pueden aparecer en los carteles: el local y los de las lenguas cooficiales.
+const SIGN_NAME_KEYS = ['name', 'name:es', 'name:ca', 'name:eu', 'name:gl', 'name:oc', 'official_name']
 
 const KIND_LABELS = {
   city: 'Ciudad',
@@ -43,12 +48,33 @@ function provinceOf(address) {
   return address.province ?? address.state_district ?? address.county ?? address.state ?? null
 }
 
+// Provincias, comunidades y comarcas también son límites administrativos, pero no pueblos.
+function isSettlement(match) {
+  return match.category !== 'boundary' || match.place_rank >= MUNICIPALITY_RANK
+}
+
+// Otros nombres del sitio: Nominatim responde «Lérida», pero los carteles dicen «Lleida».
+function aliasesOf(match) {
+  const details = match.namedetails ?? {}
+  const seen = new Set([normalizeName(match.name)])
+  const aliases = []
+  for (const key of SIGN_NAME_KEYS) {
+    for (const name of (details[key] ?? '').split(/[/;]/).map((part) => part.trim())) {
+      if (!name || seen.has(normalizeName(name))) continue
+      seen.add(normalizeName(name))
+      aliases.push(name)
+    }
+  }
+  return aliases
+}
+
 function toPlace(match) {
   const address = match.address ?? {}
   const region = provinceOf(address)
   const parent = address.municipality ?? address.city ?? address.town ?? address.village ?? null
   return {
     name: match.name,
+    aliases: aliasesOf(match),
     region,
     // Para aldeas, el municipio al que pertenecen ayuda a distinguirlas.
     detail: parent && parent !== match.name ? parent : null,
@@ -66,18 +92,25 @@ function toPlace(match) {
 export async function searchPlaces(text, { signal, limit = MAX_PLACES } = {}) {
   const matches = await request(
     'search',
-    { q: text, countrycodes: 'es', featureType: 'settlement', addressdetails: 1, extratags: 1, limit },
+    { q: text, countrycodes: 'es', featureType: 'settlement', addressdetails: 1, extratags: 1, namedetails: 1, limit },
     signal,
   )
 
+  // Municipios primero: así el núcleo homónimo se descarta frente a su municipio y no al revés.
+  const found = matches
+    .filter(isSettlement)
+    .map(toPlace)
+    .sort((a, b) => (b.kind === 'Municipio') - (a.kind === 'Municipio'))
+
   const places = []
-  for (const place of matches.map(toPlace)) {
-    const duplicate = places.some(
-      (other) => normalizeName(other.name) === normalizeName(place.name) && distanceKm(other, place) < SAME_PLACE_KM,
-    )
+  for (const place of found) {
+    const duplicate = places.some((other) => {
+      const sameKm = other.kind === 'Municipio' && place.kind !== 'Municipio' ? SAME_MUNICIPALITY_KM : SAME_PLACE_KM
+      return normalizeName(other.name) === normalizeName(place.name) && distanceKm(other, place) < sameKm
+    })
     if (!duplicate) places.push(place)
   }
-  return places.sort((a, b) => (b.kind === 'Municipio') - (a.kind === 'Municipio'))
+  return places
 }
 
 // Un código postal apunta a una zona: buscamos después el pueblo para tener su centro.

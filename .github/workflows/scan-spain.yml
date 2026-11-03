@@ -91,7 +91,8 @@ jobs:
 
   export:
     needs: scan
-    if: always()
+    # Aunque fallen trozos se exporta lo leído; si se cancela la ejecución, no.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:
       run:

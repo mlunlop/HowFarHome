@@ -63,11 +63,14 @@ function wait(ms, signal) {
 }
 
 async function findCandidates(municipality, sources, signal) {
+  // Los carteles pueden usar otro nombre oficial («Lleida» para «Lérida»): se buscan todos.
+  // El nombre que se muestra y la clave de los votos siguen siendo los de siempre.
+  const signName = [municipality.name, ...(municipality.aliases ?? [])].join(' / ')
   // Sin índice generado (por ejemplo, en un clon recién hecho) se recurre a Overpass.
   const elements =
-    (await fetchIndexedElements(municipality.name, { signal })) ??
-    (await fetchSignElements(municipality.name, { signal }))
-  const signs = extractSigns(filterBySource(elements, sources), municipality)
+    (await fetchIndexedElements(signName, { signal })) ??
+    (await fetchSignElements(signName, { signal }))
+  const signs = extractSigns(filterBySource(elements, sources), { ...municipality, name: signName })
   if (!signs.length) {
     throw new SearchError(
       `OpenStreetMap no tiene ningún cartel de carretera que mencione ${municipality.name}.`,
