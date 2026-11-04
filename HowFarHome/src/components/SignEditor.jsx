@@ -3,6 +3,7 @@ import { distanceKm, formatKm } from '../services/geo.js'
 import { MAX_MOVE_KM, MAX_NOTE_LENGTH } from '../services/reports.js'
 import { freeEmbedUrl } from '../services/streetView.js'
 import LocationPicker from './LocationPicker.jsx'
+import StreetViewGate from './StreetViewGate.jsx'
 
 const PREVIEW_DELAY_MS = 600
 //Por debajo de esto no merece la pena guardar una corrección
@@ -100,14 +101,16 @@ function SignEditor({ mode, municipality, start, origin, onSave, onClose }) {
             />
           </div>
           <div className="relative h-56 bg-neutral-950 md:h-96">
-            <iframe
-              key={`${preview.lat},${preview.lng}`}
-              title="Street View del punto elegido"
-              src={freeEmbedUrl({ ...preview, heading: null })}
-              className="absolute inset-0 size-full"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+            <StreetViewGate>
+              <iframe
+                key={`${preview.lat},${preview.lng}`}
+                title="Street View del punto elegido"
+                src={freeEmbedUrl({ ...preview, heading: null })}
+                className="absolute inset-0 size-full"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </StreetViewGate>
           </div>
         </div>
 

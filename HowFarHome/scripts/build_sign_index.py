@@ -33,6 +33,9 @@ JOINTS = (" de ", " a ", " hacia ")
 MAX_NAME_WORDS = 6
 #Palabras por las que se corta un nombre largo para obtener su forma abreviada
 SHORT_NAME_CUTS = {"de", "del", "la", "el", "los", "las"}
+#Deben coincidir con DOTLESS_ABBREVIATIONS y MIN_FULL_WORD_LENGTH de src/services/signs.js
+DOTLESS_ABBREVIATIONS = {"st", "sta", "sto"}
+MIN_FULL_WORD_LENGTH = 4
 
 
 def normalize(text):
@@ -69,6 +72,35 @@ def road_name_keys(name):
     return keys
 
 
+def sign_tokens(text):
+    """("st", True), ("vicenc", False)...: True si la palabra está abreviada."""
+    tokens = re.findall(r"[a-z0-9]+\.?", re.sub(r"[^a-z0-9.]+", " ", text))
+    return [(t[:-1], True) if t.endswith(".") else (t, t in DOTLESS_ABBREVIATIONS) for t in tokens]
+
+
+def abbreviates(short, word):
+    if len(short) >= len(word) or short[0] != word[0]:
+        return False
+    found = 0
+    for letter in word:
+        if found < len(short) and letter == short[found]:
+            found += 1
+    return found == len(short)
+
+
+def abbreviation_matches(tokens, words):
+    """¿Es "st. vicenc dels h." una forma abreviada de "sant vicenc dels horts"?"""
+    if len(tokens) != len(words) or not any(short for _, short in tokens):
+        return False
+    full = False
+    for (word, short), target in zip(tokens, words):
+        if word == target:
+            full = full or len(word) >= MIN_FULL_WORD_LENGTH
+        elif not (short and abbreviates(word, target)):
+            return False
+    return full
+
+
 def short_names(name):
     """Formas abreviadas: 'la roda de andalucia' -> 'la roda'; 'sevilla la nueva' -> 'sevilla'."""
     words = name.split()
@@ -88,10 +120,18 @@ class SignCollector(osmium.SimpleHandler):
         #Las carreteras se indexan al final, solo bajo nombres que existen como núcleo
         self.road_keys = defaultdict(dict)
         self.place_names = set()
+        #Destinos abreviados ("jerez de la fra."), se indexan al final bajo el nombre completo
+        self.abbreviated = defaultdict(dict)
 
     def add(self, key, element_id, element):
         self.elements[element_id] = element
         self.index[shard_of(key)][key][element_id] = True
+
+    def add_destination(self, key, element_id, element):
+        self.add(key, element_id, element)
+        for piece in key.split("/"):
+            if any(short for _, short in sign_tokens(piece)):
+                self.abbreviated[piece.strip()][element_id] = True
 
     def kept_tags(self, tags):
         return {k: tags[k] for k in KEPT_TAGS if k in tags}
@@ -102,7 +142,7 @@ class SignCollector(osmium.SimpleHandler):
             element_id = f"n{n.id}"
             element = {"t": "n", "id": n.id, "tg": self.kept_tags(tags), "g": [rounded(n.location)]}
             for key in destination_keys(tags):
-                self.add(key, element_id, element)
+                self.add_destination(key, element_id, element)
             self.counts["nodos con destino"] += 1
 
         if tags.get("place") in PLACE_TYPES and "name" in tags:
@@ -142,7 +182,7 @@ class SignCollector(osmium.SimpleHandler):
 
         if has_destination:
             for key in destination_keys(tags):
-                self.add(key, element_id, element)
+                self.add_destination(key, element_id, element)
             self.counts["vías con destino"] += 1
         if is_named_road:
             self.elements[element_id] = element
@@ -158,6 +198,24 @@ class SignCollector(osmium.SimpleHandler):
                 self.index[shard_of(key)][key][element_id] = True
                 roads.add(element_id)
         self.counts["carreteras hacia un núcleo"] = len(roads)
+
+
+    def index_abbreviations(self):
+        names_by_word = defaultdict(set)
+        for name in self.place_names:
+            for word in re.findall(r"[a-z0-9]+", name):
+                if len(word) >= MIN_FULL_WORD_LENGTH:
+                    names_by_word[word].add(name)
+        found = 0
+        for piece, ids in self.abbreviated.items():
+            tokens = sign_tokens(piece)
+            candidates = set().union(*(names_by_word.get(word, ()) for word, short in tokens if not short))
+            for name in candidates:
+                if abbreviation_matches(tokens, re.findall(r"[a-z0-9]+", name)):
+                    found += 1
+                    for element_id in ids:
+                        self.index[shard_of(name)][name][element_id] = True
+        self.counts["destinos abreviados con su pueblo"] = found
 
 
 def write_index(collector, source):
@@ -191,6 +249,7 @@ def main():
     collector = SignCollector()
     collector.apply_file(source, locations=True, idx="flex_mem")
     collector.index_named_roads()
+    collector.index_abbreviations()
     total_bytes = write_index(collector, source)
 
     for label, count in collector.counts.items():

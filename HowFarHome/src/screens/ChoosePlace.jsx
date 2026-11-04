@@ -7,7 +7,7 @@ function ChoosePlace({ query, places, onPick, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="cursor-pointer font-display text-xl font-bold tracking-tight text-signal"
+          className="cursor-pointer font-display text-2xl font-bold tracking-tight text-signal sm:text-3xl"
         >
           HowFarHome?
         </button>

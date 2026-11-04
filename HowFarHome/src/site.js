@@ -5,12 +5,12 @@ export const SITE_NAME = 'HowFarHome?'
 export const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://howfarhome.es').replace(/\/$/, '')
 export const GITHUB_URL = 'https://github.com/mlunlop'
 export const REPO_URL = 'https://github.com/mlunlop/HowFarHome'
+export const LINKEDIN_URL = 'https://www.linkedin.com/in/m-luna-lpez/'
 
 export const OWNER = {
-  name: 'PENDIENTE: nombre y apellidos del titular',
-  nif: 'PENDIENTE: NIF',
-  address: 'PENDIENTE: domicilio (calle, código postal, municipio, provincia)',
-  email: 'PENDIENTE: correo de contacto',
+  name: 'MARIO LUNA LÓPEZ',
+  DNI: '26534889L',
+  email: 'mario.luna.lpez@gmail.com',
   handle: 'mlunlop',
 }
 

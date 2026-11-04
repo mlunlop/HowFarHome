@@ -1,4 +1,4 @@
-import { GITHUB_URL, OWNER, REPO_URL, SITE_NAME } from '../site.js'
+import { GITHUB_URL, LINKEDIN_URL, OWNER, REPO_URL, SITE_NAME } from '../site.js'
 import LegalLayout, { Section } from './LegalLayout.jsx'
 
 //Fotos de la portada: redimensionadas y recortadas, se publican con la misma licencia
@@ -111,8 +111,8 @@ function Credits() {
           Idea, diseño y desarrollo de{' '}
           <a href={GITHUB_URL} target="_blank" rel="noopener author">
             {OWNER.handle}
-          </a>
-          . El código está en{' '}
+          </a>{' '}
+          (<a href={LINKEDIN_URL} target="_blank" rel="noopener author">LinkedIn</a>). El código está en{' '}
           <a href={REPO_URL} target="_blank" rel="noopener">
             GitHub
           </a>

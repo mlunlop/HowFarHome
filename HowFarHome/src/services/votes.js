@@ -46,8 +46,9 @@ export async function castVote(municipalityKey, key, vote, { source = null, scor
     try {
       await insert({ ...row, source, score })
     } catch (error) {
-      //Sin la migración 003 esas columnas no existen: el voto se guarda igualmente
-      if (error.code !== 'PGRST204') throw error
+      //Sin la migración 003 esas columnas no existen, y sin la 004 no se admite el source
+      //'photo': el voto se guarda igualmente, sin ellas
+      if (error.code !== 'PGRST204' && error.code !== '23514') throw error
       await insert(row)
     }
   } else {

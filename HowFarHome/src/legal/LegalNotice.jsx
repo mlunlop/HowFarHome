@@ -15,8 +15,7 @@ function LegalNotice() {
         </p>
         <ul>
           <li>Titular: {OWNER.name}</li>
-          <li>NIF: {OWNER.nif}</li>
-          <li>Domicilio: {OWNER.address}</li>
+          <li>DNI: {OWNER.DNI}</li>
           <li>
             Correo electrónico: <a href={`mailto:${OWNER.email}`}>{OWNER.email}</a>
           </li>

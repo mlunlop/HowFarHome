@@ -46,7 +46,7 @@ function LegalLayout({ title, intro, children }) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl animate-screen-in flex-col px-4 py-6 sm:px-6 sm:py-8">
       <header>
-        <a href="/" className="font-display text-xl font-bold tracking-tight text-signal">
+        <a href="/" className="font-display text-2xl font-bold tracking-tight text-signal sm:text-3xl">
           HowFarHome?
         </a>
       </header>

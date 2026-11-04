@@ -123,7 +123,7 @@ function Landing({ initialQuery, error, onSearch }) {
       <main className="animate-screen-in">
         <section className="relative mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 py-6 sm:px-6 sm:py-8">
           <header>
-            <span className="font-display text-xl font-bold tracking-tight text-signal">HowFarHome?</span>
+            <span className="font-display text-2xl font-bold tracking-tight text-signal sm:text-3xl">HowFarHome?</span>
           </header>
 
           <div className="grid flex-1 items-center gap-10 py-8 sm:py-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
@@ -236,14 +236,19 @@ function Landing({ initialQuery, error, onSearch }) {
           <h2 id="faq-title" className="text-center font-display text-3xl font-bold tracking-tight text-signal">
             Preguntas frecuentes
           </h2>
-          <dl className="mt-8 divide-y divide-white/15 border-y border-white/15">
+          <div className="mt-8 divide-y divide-white/15 border-y border-white/15">
             {FAQ.map((item) => (
-              <div key={item.question} className="py-5">
-                <dt className="font-display text-lg font-semibold text-white">{item.question}</dt>
-                <dd className="mt-2 leading-relaxed text-pretty text-white/70">{item.answer}</dd>
-              </div>
+              <details key={item.question} name="faq" className="group">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-display text-lg font-semibold text-white transition-colors hover:text-signal [&::-webkit-details-marker]:hidden">
+                  {item.question}
+                  <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-signal transition-transform duration-300 group-open:rotate-45" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </summary>
+                <p className="pb-5 leading-relaxed text-pretty text-white/70">{item.answer}</p>
+              </details>
             ))}
-          </dl>
+          </div>
         </section>
       </main>
 

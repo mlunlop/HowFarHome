@@ -63,14 +63,14 @@ function leaderOf(candidates, verdicts) {
   )
 }
 
-function Result({ result, onSearchAnother }) {
+function Result({ result, notice: initialNotice = null, onSearchAnother }) {
   const { municipality, region, home, municipalityKey, signsFound, nearestKm } = result
   const [votes, setVotes] = useState(result.votes)
   const [reports, setReports] = useState(result.reports)
   const [voting, setVoting] = useState(false)
   const [voteError, setVoteError] = useState(null)
   const [editor, setEditor] = useState(null)
-  const [notice, setNotice] = useState(null)
+  const [notice, setNotice] = useState(initialNotice)
   //Memorizado: los hooks de detalles y fotos dependen de que los objetos no cambien en cada render
   const candidates = useMemo(() => applyReports(result.candidates, reports, home), [result.candidates, reports, home])
   const verdicts = verdictsFor(candidates, votes)
@@ -81,6 +81,8 @@ function Result({ result, onSearchAnother }) {
   const sign = candidates.find((candidate) => candidate.key === selectedKey)
   const details = useSignDetails(sign, home)
   const leaders = candidates.filter((candidate) => canLead(candidate, verdicts))
+  //Sin confirmar no es lo mismo que descartado: un cartel recién añadido aún no puede liderar
+  const allRejected = candidates.every((candidate) => verdicts[candidate.key] === 'rejected')
   const shownKm = useCountUp(sign.distanceKm)
   const isFarthest = sign.key === leaders[0]?.key
   const trusted = canLead(sign, verdicts)
@@ -130,7 +132,7 @@ function Result({ result, onSearchAnother }) {
         <button
           type="button"
           onClick={onSearchAnother}
-          className="cursor-pointer font-display text-xl font-bold tracking-tight text-signal"
+          className="cursor-pointer font-display text-2xl font-bold tracking-tight text-signal sm:text-3xl"
         >
           HowFarHome?
         </button>
@@ -164,9 +166,17 @@ function Result({ result, onSearchAnother }) {
             {signPlace}.
           </p>
         )}
-        {!leaders.length && (
+        {allRejected && (
           <p className="mt-3 text-white/60">
-            Todos los candidatos han sido descartados por otras personas.
+            Todos los candidatos han sido descartados por otras personas. ¿Conoces un cartel de{' '}
+            {municipality}?{' '}
+            <button
+              type="button"
+              onClick={() => setEditor('add')}
+              className="cursor-pointer text-white underline decoration-signal underline-offset-4 transition-colors hover:text-signal"
+            >
+              Añádelo
+            </button>
           </p>
         )}
       </section>
@@ -197,7 +207,8 @@ function Result({ result, onSearchAnother }) {
           <StatsDashboard
             stats={{
               distanceKm: sign.distanceKm,
-              nearestKm,
+              //Sin carteles de OSM, el más cercano sale de los añadidos por usuarios
+              nearestKm: nearestKm ?? candidates.at(-1).distanceKm,
               signsFound,
               route: details ? details.route : undefined,
               bearingDegrees: bearingDegrees(sign, home),

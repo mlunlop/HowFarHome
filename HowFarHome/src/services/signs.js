@@ -56,9 +56,50 @@ export function plausibleRangeKm({ population, placeType }) {
   return RANGE_BY_PLACE_TYPE[placeType] ?? DEFAULT_RANGE_KM
 }
 
+//Abreviaturas de los carteles: "St. Vicenç dels H.", "Jerez de la Fra.", "S.S. de los Reyes"
+//Una palabra con punto vale por la del nombre que empieza igual y tiene sus letras en orden
+//Debe coincidir con abbreviation_matches de scripts/build_sign_index.py
+const DOTLESS_ABBREVIATIONS = new Set(['st', 'sta', 'sto'])
+//Al menos una palabra así de larga tiene que estar entera: "St. C." no es ningún pueblo
+const MIN_FULL_WORD_LENGTH = 4
+
+function signTokens(text) {
+  return (normalizeName(text).replace(/[^a-z0-9.]+/g, ' ').match(/[a-z0-9]+\.?/g) ?? []).map((token) =>
+    token.endsWith('.')
+      ? { word: token.slice(0, -1), short: true }
+      : { word: token, short: DOTLESS_ABBREVIATIONS.has(token) },
+  )
+}
+
+function nameWords(name) {
+  return normalizeName(name).match(/[a-z0-9]+/g) ?? []
+}
+
+function abbreviates(short, word) {
+  if (short.length >= word.length || short[0] !== word[0]) return false
+  let found = 0
+  for (const letter of word) if (letter === short[found]) found++
+  return found === short.length
+}
+
+function matchesAbbreviated(tokens, words) {
+  if (tokens.length !== words.length || !tokens.some((token) => token.short)) return false
+  let full = false
+  for (const [i, { word, short }] of tokens.entries()) {
+    if (word === words[i]) full ||= word.length >= MIN_FULL_WORD_LENGTH
+    else if (!short || !abbreviates(word, words[i])) return false
+  }
+  return full
+}
+
 //Compara el destino completo: "Parque Natural de Cazorla" no es un cartel de Cazorla
 function mentions(destination, names) {
-  return destination.split(/[;,|]/).some((part) => names.has(normalizeName(part)))
+  return destination.split(/[;,|]/).some((part) => {
+    if (names.has(normalizeName(part))) return true
+    return part
+      .split('/')
+      .some((piece) => [...names].some((name) => matchesAbbreviated(signTokens(piece), nameWords(name))))
+  })
 }
 
 //"Carretera de A-401 a Peal de Becerro" lleva a Peal: su otro extremo suele tener cartel
@@ -152,6 +193,13 @@ export function textMentions(text, name) {
 
   for (let start = 0; start + size <= words.length; start++) {
     if (levenshtein(words.slice(start, start + size).join(' '), target) <= tolerance) return true
+  }
+
+  //"ST. VICENC | DELS H.": las líneas se leen seguidas, como arriba
+  const tokens = signTokens(text).filter(({ word }) => !OCR_NOISE.test(word))
+  const targetWords = nameWords(name)
+  for (let start = 0; start + targetWords.length <= tokens.length; start++) {
+    if (matchesAbbreviated(tokens.slice(start, start + targetWords.length), targetWords)) return true
   }
   return false
 }

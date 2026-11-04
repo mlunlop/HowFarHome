@@ -60,8 +60,7 @@ function Privacy() {
       <Section title="Responsable del tratamiento">
         <ul>
           <li>Responsable: {OWNER.name}</li>
-          <li>NIF: {OWNER.nif}</li>
-          <li>Domicilio: {OWNER.address}</li>
+          <li>DNI: {OWNER.DNI}</li>
           <li>
             Contacto: <a href={`mailto:${OWNER.email}`}>{OWNER.email}</a>
           </li>

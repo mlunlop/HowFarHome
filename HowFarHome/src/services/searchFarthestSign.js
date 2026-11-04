@@ -1,4 +1,3 @@
-import { debugOptions, filterBySource } from './debugOptions.js'
 import { fetchSignElements } from './overpass.js'
 import { fetchIndexedElements } from './signIndex.js'
 import { extractSigns, normalizeName, pickCandidates } from './signs.js'
@@ -62,7 +61,7 @@ function wait(ms, signal) {
   })
 }
 
-async function findCandidates(municipality, sources, signal) {
+async function findCandidates(municipality, signal) {
   //Los carteles pueden usar otro nombre oficial («Lleida» para «Lérida»): se buscan todos
   //El nombre que se muestra y la clave de los votos siguen siendo los de siempre
   const signName = [municipality.name, ...(municipality.aliases ?? [])].join(' / ')
@@ -70,13 +69,9 @@ async function findCandidates(municipality, sources, signal) {
   const elements =
     (await fetchIndexedElements(signName, { signal })) ??
     (await fetchSignElements(signName, { signal }))
-  const signs = extractSigns(filterBySource(elements, sources), { ...municipality, name: signName })
-  if (!signs.length) {
-    throw new SearchError(
-      `OpenStreetMap no tiene ningún cartel de carretera que mencione ${municipality.name}.`,
-    )
-  }
+  const signs = extractSigns(elements, { ...municipality, name: signName })
 
+  //Sin carteles no es un error: puede que alguien ya haya añadido uno, o que lo añada ahora
   const home = { lat: municipality.lat, lng: municipality.lng }
   return {
     municipality: municipality.name,
@@ -84,7 +79,7 @@ async function findCandidates(municipality, sources, signal) {
     home,
     municipalityKey: placeKey(municipality),
     signsFound: signs.length,
-    nearestKm: signs.at(-1).distanceKm,
+    nearestKm: signs.at(-1)?.distanceKm ?? null,
     candidates: pickCandidates(signs),
   }
 }
@@ -93,12 +88,12 @@ async function findCandidates(municipality, sources, signal) {
 //Los candidatos se guardan en caché; los votos se piden siempre de nuevo
 export async function searchFarthestSign(place, { signal, onProgress } = {}) {
   onProgress?.(1)
-  const { sources, shared } = debugOptions()
-  const key = sources === 'all' ? placeKey(place) : `${sources}:${placeKey(place)}`
+  const key = placeKey(place)
   let found = readCache(key)
   if (!found) {
-    found = await findCandidates(place, sources, signal)
-    writeCache(key, found)
+    found = await findCandidates(place, signal)
+    //Una búsqueda vacía no se guarda: si se mapea un cartel, se verá al volver
+    if (found.candidates.length) writeCache(key, found)
   }
 
   onProgress?.(2)
@@ -107,12 +102,10 @@ export async function searchFarthestSign(place, { signal, onProgress } = {}) {
     if (signal?.aborted) throw error
     return empty
   }
-  const [votes, reports] = shared
-    ? await Promise.all([
-        fetchVotes(found.municipalityKey, { signal }).catch(fallback({})),
-        fetchReports(found.municipalityKey, { signal }).catch(fallback([])),
-      ])
-    : [{}, []]
+  const [votes, reports] = await Promise.all([
+    fetchVotes(found.municipalityKey, { signal }).catch(fallback({})),
+    fetchReports(found.municipalityKey, { signal }).catch(fallback([])),
+  ])
 
   onProgress?.(SEARCH_STEPS.length)
   await wait(SETTLE_DURATION_MS, signal)

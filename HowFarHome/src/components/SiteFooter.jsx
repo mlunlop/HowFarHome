@@ -1,5 +1,5 @@
 import { openPreferences } from '../services/consent.js'
-import { GITHUB_URL, OWNER } from '../site.js'
+import { LINKEDIN_URL, OWNER, REPO_URL } from '../site.js'
 import AdBanner from './AdBanner.jsx'
 
 const LINKS = [
@@ -36,12 +36,16 @@ function SiteFooter({ children, className = '' }) {
       <p className="mt-2">
         © {YEAR} HowFarHome? · Hecho por{' '}
         <a
-          href={GITHUB_URL}
+          href={LINKEDIN_URL}
           target="_blank"
           rel="noopener author"
           className="font-medium text-white underline decoration-signal underline-offset-4 hover:text-signal"
         >
           {OWNER.handle}
+        </a>
+        {' · '}
+        <a href={REPO_URL} target="_blank" rel="noopener" className="underline decoration-signal underline-offset-4 hover:text-white">
+          Código en GitHub
         </a>
       </p>
     </footer>

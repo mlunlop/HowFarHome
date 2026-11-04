@@ -3,8 +3,10 @@
 "MERALES" a 20 km de Morales pasa a "MORALES": la web solo admite errores en los nombres
 largos (textMentions en src/services/signs.js), así que en los cortos una letra mal leída
 hace que el cartel no cuente. Una palabra solo se corrige si está a una letra de distancia
-de un único pueblo al alcance del cartel; si hay varios, decide lo que leyeron otras fotos
-del mismo cartel. El texto original se guarda aparte.
+de un único pueblo al alcance del cartel y otro cartel cercano lee ese pueblo bien; si
+quedan varios, decide lo que leyeron otras fotos del mismo cartel. Nunca se cambia una
+palabra que ya es parte del nombre de algún pueblo ("Capella" no pasa a "Calella").
+El texto original se guarda aparte.
 
 Necesita el índice de OSM (public/sign-index/*.json, de build_sign_index.py): de ahí salen
 los nombres de los pueblos con su posición y población. Lo usa scan_mapillary_signs.py.
@@ -27,6 +29,9 @@ MIN_CORRECTED_LENGTH = 5
 FREQUENT_WORD = 10
 #Detecciones más cerca que esto son el mismo cartel visto desde varias fotos
 SAME_SIGN_KM = 0.05
+#Una corrección necesita que otro cartel a esta distancia lea el pueblo sin errores:
+#"Paloma" junto a Palma o "Hombre" junto a Ombre no son carteles de esos pueblos
+CONFIRM_KM = 30
 
 #Palabras corrientes en los carteles que están a una letra de algún pueblo
 SIGN_WORDS = {
@@ -87,16 +92,19 @@ class Places:
     def __init__(self, index_dir):
         self.where = defaultdict(list)
         self.spelling = {}
+        #Palabras de todos los nombres, también de los compuestos: "gudina" de "A Gudiña"
+        self.words = set()
         for path in index_dir.glob("*.json"):
             if path.name == "meta.json":
                 continue
             for key, elements in json.loads(path.read_text(encoding="utf-8")).items():
+                places = [element for element in elements if "place" in element["tg"]]
+                if places:
+                    self.words.update(key.split())
                 if " " in key or not key.isalpha():
                     continue
-                for element in elements:
+                for element in places:
                     tags = element["tg"]
-                    if "place" not in tags:
-                        continue
                     lat, lng = element["g"][0]
                     self.where[key].append((lat, lng, place_range_km(tags)))
                     self.spelling.setdefault(key, display_word(key, tags["name"]))
@@ -132,8 +140,13 @@ class Cleaner:
         self.frequency = Counter(normalize(token) for sign in signs for token in tokens(sign["text"]))
         #Lecturas de cada zona de 50 m, para desempatar con otras fotos del mismo cartel
         self.nearby = defaultdict(list)
+        #Dónde se ha leído bien cada pueblo, para confirmar las correcciones
+        self.read_at = defaultdict(list)
         for sign in signs:
             self.nearby[self.cell(sign["lat"], sign["lng"])].append(sign)
+            for word in {normalize(token) for token in tokens(sign["text"])}:
+                if word in places.where:
+                    self.read_at[word].append(sign)
         self.fixes = Counter()
 
     @staticmethod
@@ -150,17 +163,23 @@ class Cleaner:
                         words.update(normalize(token) for token in tokens(other["text"]))
         return words
 
+    def confirmed(self, name, sign):
+        return any(
+            other is not sign and distance_km(sign["lat"], sign["lng"], other["lat"], other["lng"]) <= CONFIRM_KM
+            for other in self.read_at.get(name, ())
+        )
+
     def correct(self, word, sign):
         if (
             len(word) < MIN_CORRECTED_LENGTH or not word.isalpha() or word in SIGN_WORDS
             or self.frequency[word] >= FREQUENT_WORD
-            or self.places.reachable(word, sign["lat"], sign["lng"])
+            or word in self.places.words
         ):
             return None
         #Un plural no es un error de OCR: "Villas" no es "Villa", ni "Peligro" "Peligros"
         found = {
             name for name in self.places.candidates(word, sign["lat"], sign["lng"])
-            if name != word + "s" and word != name + "s"
+            if name != word + "s" and word != name + "s" and self.confirmed(name, sign)
         }
         if len(found) > 1:
             found &= self.neighbour_words(sign)
