@@ -15,9 +15,12 @@ La idea es sencilla, pero no existe ninguna base de datos pública con «lo que 
    - [Fuente 1: OpenStreetMap](#fuente-1-openstreetmap)
    - [Fuente 2: fotos de Mapillary leídas con RapidOCR](#fuente-2-fotos-de-mapillary-leídas-con-rapidocr)
    - [Escanear toda España con GitHub Actions](#escanear-toda-españa-con-github-actions)
+   - [Limpieza del OCR](#limpieza-del-ocr)
    - [Fuente 3: lo que aportan los usuarios](#fuente-3-lo-que-aportan-los-usuarios)
 3. [El índice estático](#el-índice-estático)
 4. [Cómo se elige el cartel ganador](#cómo-se-elige-el-cartel-ganador)
+   - [Abreviaturas](#abreviaturas)
+   - [¿OSM o fotos?](#osm-o-fotos)
 5. [Historia del proyecto](#historia-del-proyecto)
 6. [Puesta en marcha](#puesta-en-marcha)
 7. [Estructura del repositorio](#estructura-del-repositorio)
@@ -58,6 +61,8 @@ Todo ocurre en el navegador: la web es estática (React + Vite + Tailwind) y el 
 
 También genera alias: «La Roda de Andalucía» aparece en los carteles como «La Roda», y «Sevilla la Nueva» no debe confundirse con Sevilla.
 
+Y resuelve las abreviaturas: un destino como «Jerez de la Fra.» o «Montornès del V.» se guarda también bajo el nombre completo del pueblo, para que la búsqueda lo encuentre (204 destinos; ver [Abreviaturas](#abreviaturas)). El nombre completo sale de los núcleos de población o, si el municipio no tiene nodo con ese nombre, de otro cartel que lo escriba entero.
+
 **El problema:** OSM solo tiene la etiqueta `destination` en una parte pequeña de los cruces de España. Muchos carteles reales no están mapeados, y para pueblos pequeños el resultado se quedaba corto. Había que leer los carteles de verdad.
 
 ### Fuente 2: fotos de Mapillary leídas con RapidOCR
@@ -67,7 +72,7 @@ También genera alias: «La Roda de Andalucía» aparece en los carteles como «
 1. **Listar carteles de dirección.** Divide la zona en recuadros de 0,04° y pide a la API Graph de Mapillary (`/map_features`) las señales de cada uno. Se queda con los tipos que llevan nombres de destino: `information--general-directions`, `information--directions`, `information--highway-exit`, `information--motorway-exit-ahead`, `complementary--texts`…
 2. **Elegir la mejor foto.** Para cada cartel pide sus detecciones (`/{id}/detections`), decodifica la geometría (un tile vectorial en base64) y escoge la foto en la que el cartel sale más grande.
 3. **Recortar.** Descarga la miniatura de 2048 px —o la original si el cartel queda diminuto—, recorta el cartel con un 15 % de margen y lo amplía hasta al menos 400 px de ancho.
-4. **Leer con [RapidOCR](https://github.com/RapidAI/RapidOCR).** Modelos PaddleOCR sobre ONNX Runtime: funciona en CPU, sin GPU, y lee bien los textos de los carteles españoles. Las descargas van por delante del OCR en un pool de hilos, así que mientras se lee un cartel ya se están bajando los siguientes (~2,6 s por cartel).
+4. **Leer con [RapidOCR](https://github.com/RapidAI/RapidOCR).** Modelos PaddleOCR sobre ONNX Runtime: funciona en CPU, sin GPU, y lee bien los textos de los carteles españoles. Las descargas van por delante del OCR en un pool de hilos, así que mientras se lee un cartel ya se están bajando los siguientes (~2,6 s por cartel en un portátil, 0,3–0,6 s en las máquinas de GitHub).
 5. **Guardar al momento.** Cada resultado se añade a `data/mapillary/ocr-<zona>.jsonl` en cuanto se lee: se puede cortar en cualquier momento y al relanzar sigue donde iba.
 
 ```json
@@ -76,7 +81,7 @@ También genera alias: «La Roda de Andalucía» aparece en los carteles como «
  "text": "HERNÁN VALLE", "image": "780279692691408"}
 ```
 
-6. **Exportar.** `export` junta todos los `.jsonl`, quita duplicados y escribe `public/sign-index/photo/`, indexado por cada palabra del texto (de 4 letras o más). La web carga solo los ficheros de las palabras del municipio buscado.
+6. **Exportar.** `export` junta todos los `.jsonl`, quita duplicados, corrige las letras mal leídas en los nombres de pueblos ([Limpieza del OCR](#limpieza-del-ocr)) y escribe `public/sign-index/photo/`, indexado por cada palabra del texto (de 4 letras o más). La web carga solo los ficheros de las palabras del municipio buscado.
 
 ```mermaid
 flowchart LR
@@ -85,7 +90,8 @@ flowchart LR
     C --> D["Recorte + ampliación"]
     D --> E["RapidOCR"]
     E --> F[("ocr-*.jsonl")]
-    F -->|export| G["public/sign-index/photo/"]
+    F -->|export| L["Limpieza con los<br/>pueblos de OSM"]
+    L --> G["public/sign-index/photo/"]
 ```
 
 El método se afinó primero en una zona pequeña entre Jódar, Úbeda, Peal de Becerro y Cazorla, y luego en toda la provincia de Jaén (676 carteles de dirección, 302 con texto legible). Con el proceso ya probado, se lanzó sobre toda España.
@@ -125,6 +131,12 @@ flowchart LR
 - **Tolerante a fallos.** `fail-fast: false`: si un trozo falla, los demás siguen y `export` se ejecuta igualmente con lo leído.
 - **Resumen.** Al terminar, el resumen de la ejecución dice cuántos trozos están completos y cuántos carteles se han leído. El artefacto `photo-index` se descomprime en `HowFarHome/public/sign-index/photo/`.
 
+El escaneo de España dejó **39 596 carteles con texto legible**, en un índice de fotos de 29 MB.
+
+Algunos trozos se quedaron sin tiempo: hacia el final de la ejecución, Mapillary respondía mucho más despacio y el listado de un trozo podía llevarse las 5 horas enteras. Bastó con relanzar con la misma `version`.
+
+El `export` de GitHub no puede limpiar el texto, porque el índice de OSM no está en el repositorio. Por eso, después de descomprimir `photo-index`, se ejecuta `clean` en local (ver [Regenerar los datos](#regenerar-los-datos)).
+
 Así se escaneó España entera, y así se vuelve a escanear cuando Mapillary tiene fotos nuevas: **Actions → Escanear carteles de España → Run workflow**. Necesita el secreto `MAPILLARY_TOKEN` en el repositorio (Settings → Secrets and variables → Actions) con un Client Token de Mapillary (empieza por `MLY|`).
 
 | Entrada | Por defecto | Qué hace |
@@ -132,6 +144,18 @@ Así se escaneó España entera, y así se vuelve a escanear cuando Mapillary ti
 | `shards` | `100` | Trozos en que se divide España. No lo cambies entre relanzamientos. |
 | `parallel` | `12` | Trozos a la vez. Con más, Mapillary devuelve errores 500. |
 | `version` | `v1` | Nombre del progreso guardado. Cámbialo para empezar de cero. |
+
+### Limpieza del OCR
+
+El OCR se equivoca en alguna letra: «Ballen», «Madrld», «Barcetona», «TORDEKILLAS». En los nombres largos la búsqueda ya tolera algún error, pero los cortos tienen que leerse exactos, y una sola letra hace que el cartel no cuente. [`scripts/clean_ocr.py`](HowFarHome/scripts/clean_ocr.py) corrige esas palabras antes de publicar el índice, usando los pueblos de OSM:
+
+- **Un único pueblo a una letra.** La palabra se cambia solo si hay exactamente un pueblo a una letra de distancia al alcance del cartel (el mismo alcance por población que usa la web). Si hay varios, desempatan las otras fotos del mismo cartel, a menos de 50 m.
+- **Confirmación cercana.** Además, otro cartel a menos de 30 km tiene que leer ese pueblo sin errores. Así no se tocan «Paloma» junto a Palma ni «hombre» junto a la aldea de Ombre.
+- **Nunca se cambia un pueblo por otro.** Si la palabra ya forma parte del nombre de algún pueblo de España («Capella», «Calders», «Gudiña»), se deja como está.
+- **Palabras reales.** Tampoco se tocan las palabras corrientes de los carteles (centro, salida, peligro, puerta, olivar…), los plurales («Villas» no es «Villa») ni las palabras que se repiten en muchos carteles.
+- **Se guarda el original.** El texto leído queda en `raw`, así que `clean` se puede repetir siempre partiendo de lo que leyó el OCR.
+
+Sobre España corrige **2 194 palabras**: «Madrld → Madrid», «Pampiona → Pamplona», «OBEDA → ÚBEDA», «Mostolss → Móstoles»… En una revisión a mano de una muestra al azar, prácticamente todas eran correctas. La lista completa queda en `data/mapillary/corrections.txt`, para revisarla después de cada ejecución.
 
 ### Fuente 3: lo que aportan los usuarios
 
@@ -141,6 +165,8 @@ Sin necesidad de cuenta, cualquiera puede:
 - añadir un cartel que falta o mover uno que está mal situado (como mucho 2 km).
 
 Se guarda en [Supabase](https://supabase.com) (tablas en [`supabase/`](HowFarHome/supabase)), con políticas RLS que permiten leer y añadir pero no editar ni borrar. Sin Supabase configurado, los votos se guardan solo en el navegador.
+
+Cada voto guarda también de dónde salió el candidato (`destination`, `road-name`, `photo` o `user`) y su puntuación, para medir qué indicios aciertan. Además, cada navegador tiene un tope de votos, para que nadie pueda tumbar a base de votos los carteles de un pueblo. Las migraciones van en orden: `schema.sql`, `002_sign_reports.sql`, `003_vote_sources.sql`, `004_photo_votes.sql` y `005_vote_limits.sql`. La web funciona aunque falte alguna: guarda el voto con las columnas que existan.
 
 ---
 
@@ -153,9 +179,13 @@ public/sign-index/
 ├── meta.json          # fecha de generación y recuentos de OSM
 ├── ja.json, ca.json…  # 332 trozos de OSM, por nombre de destino
 └── photo/
-    ├── meta.json      # carteles leídos con OCR
+    ├── meta.json      # carteles leídos con OCR y palabras corregidas
     └── he.json, va.json…   # carteles de Mapillary, por palabra del texto leído
 ```
+
+Cada cartel de foto lleva el texto corregido en `ocr` y, si se corrigió algo, el original en `raw`.
+
+La web guarda cada búsqueda en el navegador durante 30 días, junto con la fecha de generación de los dos índices (los `meta.json`). Si se regenera cualquiera de ellos, las búsquedas guardadas dejan de valer y se repiten.
 
 Si el índice no existe (por ejemplo, en un clon recién hecho), la web consulta Overpass en directo.
 
@@ -168,11 +198,44 @@ Encontrar el nombre en un cartel es fácil; que no sea un falso positivo, no tan
 - **Nombre completo.** «Parque Natural de Cazorla» no es un cartel de Cazorla, y «Sevilla la Nueva» no lleva a Sevilla.
 - **Alcance según población.** Un pueblo pequeño solo aparece en los carteles de su comarca; una ciudad, en toda España. Un cartel a 400 km que nombra una aldea de 200 habitantes es casi seguro otra aldea con el mismo nombre.
 - **Ruido del OCR.** Se descartan las referencias de carretera y distancias que se cuelan entre palabras (`PEAL | 25 | DE | BECERRO`), los nombres de sierras (`P.N. Sierras de Cazorla`, también mal leídas como «Slerras») y los paneles de obras y subvenciones («Consejería…», «Unión Europea»), que citan pueblos pero no indican el camino.
-- **Tolerancia a errores.** En nombres largos se admite un error de OCR; en los cortos no, porque «centro» acabaría siendo «Cenero».
+- **Tolerancia a errores.** En nombres largos se admite un error de OCR por cada cinco letras; en los cortos no, porque «centro» acabaría siendo «Cenero». Los errores de los nombres cortos los corrige antes la [limpieza del OCR](#limpieza-del-ocr).
+- **Abreviaturas.** «St. Vicenç dels H.» cuenta como Sant Vicenç dels Horts ([ver abajo](#abreviaturas)).
 - **Agrupación.** Carteles a menos de 1,5 km son el mismo cruce; otros carteles cercanos con el mismo nombre refuerzan al candidato.
 - **Votos.** Los votos de los usuarios suben o bajan cada candidato.
 
 Para el ganador se calcula la ruta en coche con OSRM y se busca la foto de Street View un poco antes del desvío, mirando hacia el cartel.
+
+### Abreviaturas
+
+Los carteles de autovía abrevian los nombres largos, que son justo los que suelen estar más lejos: «St. Vicenç dels H.», «Sta. Coloma de Gramenet», «Jerez de la Fra.», «S.S. de los Reyes», «Montornès del V.». En OSM había más de 3 000 destinos escritos así, y en el texto de las fotos unas 1 100 abreviaturas.
+
+La regla es la misma en la web (`signs.js`) y en `build_sign_index.py`:
+
+- Una palabra con punto vale por la palabra del nombre que empieza por la misma letra y contiene sus letras en orden: `st.` → *sant*, `fra.` → *frontera*, `h.` → *horts*, `s.s.` → *san sebastián*.
+- `St`, `Sta` y `Sto` valen también sin punto, porque el OCR suele perderlo.
+- El cartel tiene que traer el resto del nombre palabra por palabra, y al menos una palabra larga escrita entera: «St. C.» no es ningún pueblo.
+
+Sigue sin resolverse cuando el OCR lee mal la propia abreviatura («5t, Viceng dels H.») o cuando el cartel recorta el nombre sin punto («Sta. Perpetua» por Santa Perpètua de Mogoda, «Vilanova G.»).
+
+### ¿OSM o fotos?
+
+Con el índice de fotos de España se planteó quitar OSM y quedarse solo con las fotos y los votos. Antes de decidir, se midió en 600 municipios al azar (150 de cada tamaño de población) con el mismo código de la web:
+
+| Población | Solo OSM | Solo fotos | Juntos |
+|---|---|---|---|
+| < 1 000 | 25 % | 19 % | 38 % |
+| 1 000–5 000 | 61 % | 45 % | 70 % |
+| 5 000–20 000 | 85 % | 67 % | 91 % |
+| > 20 000 | 95 % | 82 % | 97 % |
+| **Total** | **66 %** | **53 %** | **74 %** |
+
+*Porcentaje de municipios con al menos un cartel fiable.*
+
+- **Cobertura.** Sin OSM, el 21 % de los municipios se quedaría sin resultado: Mapillary solo ha pasado cerca de un 30 % de los carteles mapeados en OSM.
+- **Precisión.** Comparando cada cartel de OSM con las fotos tomadas a menos de 300 m, y calibrando con los propios carteles de foto, se estima que en torno al 80 % de los carteles de OSM son reales. Sus errores son sobre todo de *posición*: el destino se marca en el ramal entero y el cartel real puede estar unos cientos de metros antes.
+- **Las fotos también fallan.** En una revisión a mano, los falsos positivos de las fotos eran sobre todo nombres de calle a distancias absurdas: «avenida de Barcelona» en Andújar, «C. Sevilla» en Rubí.
+
+Conclusión: se mantienen las dos fuentes. Cuando hay foto, gana la foto, porque es la prueba más directa, y OSM cubre los pueblos donde Mapillary no ha llegado.
 
 ---
 
@@ -186,6 +249,9 @@ Para el ganador se calcula la ruta en coche con OSRM y se busca la foto de Stree
 6. **OCR de Mapillary.** Prueba en Jódar–Cazorla y escaneo completo de la provincia de Jaén con RapidOCR.
 7. **Escaneo de toda España con GitHub Actions.** El workflow en matriz, varias rondas de ajustes contra los errores 500 de Mapillary (recuadros más pequeños, división automática, menos paralelismo) y el índice de fotos de todo el país incorporado a la web.
 8. **Interfaz nueva y textos legales.** Aviso legal, privacidad, cookies, créditos y FAQ.
+9. **Limpieza del OCR.** Corrección de las letras mal leídas con los pueblos de OSM, ajustada sobre los resultados de toda España para que no cambie pueblos reales ni palabras corrientes.
+10. **OSM frente a fotos.** El estudio en 600 municipios que decidió mantener las dos fuentes. Después se retiró el panel temporal con el que se comparaban a mano.
+11. **Abreviaturas.** «St.», «Sta.», «de la Fra.», «del V.»… reconocidas en la web y en el índice de OSM, y una caché de búsquedas que caduca al regenerar el índice.
 
 ---
 
@@ -198,6 +264,7 @@ cd HowFarHome
 npm install
 cp .env.example .env.local   # todo es opcional; ver los comentarios del fichero
 npm run dev
+npm test      # tests con Vitest
 ```
 
 ### Variables de entorno (`.env.local`)
@@ -236,11 +303,19 @@ Un trozo de España, como lo hace GitHub Actions:
 data/.venv/Scripts/python scripts/scan_mapillary_signs.py scan spain 3/100
 ```
 
-Generar `public/sign-index/photo/` con todo lo leído:
+Generar `public/sign-index/photo/` con todo lo leído en local (la limpieza necesita antes el índice de OSM):
 
 ```bash
 data/.venv/Scripts/python scripts/scan_mapillary_signs.py export
 ```
+
+Con el escaneo de GitHub: descomprime el artefacto `photo-index` en `public/sign-index/photo/` y limpia el texto. Se puede repetir cuantas veces haga falta, porque siempre parte del texto original:
+
+```bash
+data/.venv/Scripts/python scripts/scan_mapillary_signs.py clean
+```
+
+Revisa después `data/mapillary/corrections.txt`, la lista de todo lo que se ha corregido.
 
 ---
 
@@ -252,12 +327,13 @@ HowFarHome/
 ├── scripts/
 │   ├── build_sign_index.py        OSM (.pbf) → public/sign-index/
 │   ├── scan_mapillary_signs.py    Mapillary + RapidOCR → public/sign-index/photo/
+│   ├── clean_ocr.py               Corrección del OCR con los pueblos de OSM
 │   └── requirements-scan.txt
 ├── public/sign-index/             Índice estático que consume la web
 ├── src/
 │   ├── screens/                   Landing, elegir sitio, carga, resultado
 │   ├── components/                Mapa, Street View, candidatos, editor de carteles…
-│   ├── services/                  Búsqueda, índice, OSM, geocodificación, rutas, votos
+│   ├── services/                  Búsqueda, índice, OSM, geocodificación, rutas, votos (y sus *.test.js)
 │   └── legal/                     Aviso legal, privacidad, cookies, créditos
 ├── supabase/                      Esquema de votos y aportaciones
 └── data/                          Datos de trabajo (no se publican)
