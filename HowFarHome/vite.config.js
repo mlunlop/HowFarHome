@@ -46,7 +46,7 @@ ${Object.values(PAGES)
     transformIndexHtml: {
       order: 'pre',
       handler: (html) =>
-        html.replaceAll('%SITE_URL%', siteUrl).replace('<meta name="viewport"', `${COMMON_HEAD.trim()}\n    <meta name="viewport"`),
+        html.replaceAll('%SITE_URL%', siteUrl).replace('<meta name="viewport"', `${COMMON_HEAD.trim()}${adsenseClient ? `\n    <meta name="google-adsense-account" content="${adsenseClient}" />` : ''}\n    <meta name="viewport"`),
     },
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemap })
