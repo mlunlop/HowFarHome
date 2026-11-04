@@ -1,4 +1,4 @@
-// Carretera en perspectiva con la línea central avanzando. La usan la portada y la carga.
+//Carretera en perspectiva con la línea central avanzando, la usan la portada y la carga
 function Road({ className = '', slow = false }) {
   return (
     <div aria-hidden="true" className={`relative overflow-hidden mask-t-from-50% [perspective:280px] ${className}`}>

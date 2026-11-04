@@ -15,7 +15,7 @@ const SETTLE_DURATION_MS = 450
 const CACHE_PREFIX = 'howfarhome:v4:'
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
-// Error con un mensaje pensado para enseñárselo a la persona que busca.
+//Error con un mensaje pensado para enseñárselo a la persona que busca
 export class SearchError extends Error {
   constructor(userMessage) {
     super(userMessage)
@@ -23,7 +23,7 @@ export class SearchError extends Error {
   }
 }
 
-// Distingue municipios homónimos: la clave lleva las coordenadas.
+//Distingue municipios homónimos: la clave lleva las coordenadas
 function placeKey(place) {
   return `${normalizeName(place.name)}@${place.lat.toFixed(2)},${place.lng.toFixed(2)}`
 }
@@ -44,7 +44,7 @@ function writeCache(key, result) {
       JSON.stringify({ savedAt: Date.now(), result }),
     )
   } catch {
-    // Sin almacenamiento disponible simplemente se repite la búsqueda.
+    //Sin almacenamiento disponible simplemente se repite la búsqueda
   }
 }
 
@@ -63,10 +63,10 @@ function wait(ms, signal) {
 }
 
 async function findCandidates(municipality, sources, signal) {
-  // Los carteles pueden usar otro nombre oficial («Lleida» para «Lérida»): se buscan todos.
-  // El nombre que se muestra y la clave de los votos siguen siendo los de siempre.
+  //Los carteles pueden usar otro nombre oficial («Lleida» para «Lérida»): se buscan todos
+  //El nombre que se muestra y la clave de los votos siguen siendo los de siempre
   const signName = [municipality.name, ...(municipality.aliases ?? [])].join(' / ')
-  // Sin índice generado (por ejemplo, en un clon recién hecho) se recurre a Overpass.
+  //Sin índice generado (por ejemplo, en un clon recién hecho) se recurre a Overpass
   const elements =
     (await fetchIndexedElements(signName, { signal })) ??
     (await fetchSignElements(signName, { signal }))
@@ -89,8 +89,8 @@ async function findCandidates(municipality, sources, signal) {
   }
 }
 
-// Recibe un sitio ya localizado (ver places.js). El paso 0, localizarlo, lo marca quien llama.
-// Los candidatos se guardan en caché; los votos se piden siempre de nuevo.
+//Recibe un sitio ya localizado (ver places.js), el paso 0 lo marca quien llama
+//Los candidatos se guardan en caché; los votos se piden siempre de nuevo
 export async function searchFarthestSign(place, { signal, onProgress } = {}) {
   onProgress?.(1)
   const { sources, shared } = debugOptions()
@@ -102,7 +102,7 @@ export async function searchFarthestSign(place, { signal, onProgress } = {}) {
   }
 
   onProgress?.(2)
-  // Si Supabase falla, se enseñan los carteles de OSM sin votos ni aportaciones.
+  //Si Supabase falla, se enseñan los carteles de OSM sin votos ni aportaciones
   const fallback = (empty) => (error) => {
     if (signal?.aborted) throw error
     return empty

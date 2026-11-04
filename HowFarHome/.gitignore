@@ -1,4 +1,4 @@
-# Logs
+#Logs
 logs
 *.log
 npm-debug.log*
@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
+#Editores
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,10 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
-# Extracto de OSM descargado para generar el índice
+#Extracto de OSM descargado para generar el índice
 /data/
-# Índice generado con scripts/build_sign_index.py (47 MB)
+#Índice generado con scripts/build_sign_index.py (47 MB)
 /public/sign-index/
 
-# Caché de Python
+#Caché de Python
 __pycache__/

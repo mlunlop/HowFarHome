@@ -1,11 +1,11 @@
-// Consentimiento de cookies y contenido de terceros (RGPD + LSSI-CE art. 22.2, guía AEPD).
-// Lo técnicamente necesario (votos, caché, este propio consentimiento) no lo pide.
+//Consentimiento de cookies y contenido de terceros (RGPD + LSSI-CE art. 22.2, guía AEPD)
+//Lo técnicamente necesario (votos, caché, este propio consentimiento) no lo pide
 import { useSyncExternalStore } from 'react'
 
 const STORAGE_KEY = 'howfarhome:consent'
-// Si cambian las finalidades, subir la versión vuelve a preguntar a todo el mundo.
+//Si cambian las finalidades, subir la versión vuelve a preguntar a todo el mundo
 const VERSION = 1
-// La AEPD recomienda no guardar la elección más de 24 meses; volvemos a preguntar al año.
+//La AEPD recomienda no guardar la elección más de 24 meses; volvemos a preguntar al año
 const MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000
 
 export const CATEGORIES = ['external', 'ads']
@@ -33,7 +33,7 @@ function subscribe(listener) {
   return () => listeners.delete(listener)
 }
 
-// Google Consent Mode v2: index.html arranca todo en «denied» y aquí se actualiza.
+//Google Consent Mode v2: index.html arranca todo en «denied» y aquí se actualiza
 function updateGoogleConsent(choice) {
   const ads = choice?.ads ? 'granted' : 'denied'
   window.gtag?.('consent', 'update', {
@@ -56,14 +56,14 @@ export function saveConsent(choice) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
   } catch {
-    // Sin almacenamiento la elección dura hasta recargar.
+    //Sin almacenamiento la elección dura hasta recargar
   }
   preferencesOpen = false
   updateGoogleConsent(current)
   emit()
 }
 
-// Activa una sola categoría sin tocar las demás (p. ej. «Cargar Street View»).
+//Activa una sola categoría sin tocar las demás (p. ej. «Cargar Street View»)
 export function allow(category) {
   saveConsent({ ...current, [category]: true })
 }

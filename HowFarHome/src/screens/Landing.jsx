@@ -8,7 +8,7 @@ import { indexMeta } from '../services/signIndex.js'
 const MIN_SUGGEST_LENGTH = 3
 const SUGGEST_DELAY_MS = 250
 
-// Debe coincidir con el FAQPage de index.html (Google solo lo acepta si el texto está visible).
+//Debe coincidir con el FAQPage de index.html (Google solo lo acepta si el texto está visible)
 const FAQ = [
   {
     question: '¿Cómo encuentra HowFarHome? el cartel más lejano de mi pueblo?',
@@ -35,7 +35,7 @@ function placeLine(place) {
   return [place.detail, place.region].filter(Boolean).join(', ')
 }
 
-// Cifras del índice propio; si no hay índice, la línea no se muestra.
+//Cifras del índice propio; si no hay índice, la línea no se muestra
 function IndexStats() {
   const [counts, setCounts] = useState(null)
 
@@ -48,7 +48,7 @@ function IndexStats() {
   const places = counts['núcleos de población'] ?? 0
   const format = (value) => value.toLocaleString('es-ES')
 
-  // La fuente va en su propia línea: así ningún separador se queda colgando al partir la línea.
+  //La fuente va en su propia línea: así ningún separador se queda colgando al partir la línea
   return (
     <div className="mt-6 text-sm text-white/60">
       <p className="flex flex-wrap gap-x-3 gap-y-1 max-lg:justify-center">
@@ -86,7 +86,7 @@ function Landing({ initialQuery, error, onSearch }) {
     }
   }, [name])
 
-  // Solo se enseñan las sugerencias del texto actual, nunca las de una búsqueda anterior.
+  //Solo se enseñan las sugerencias del texto actual, nunca las de una búsqueda anterior
   const suggestions = suggested.text === name ? suggested.items : []
   const showSuggestions = open && suggestions.length > 0
 
@@ -106,7 +106,7 @@ function Landing({ initialQuery, error, onSearch }) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       const step = event.key === 'ArrowDown' ? 1 : -1
-      // -1 es «ninguna»: se vuelve al texto escrito al salir por arriba o por abajo.
+      //-1 es «ninguna»: se vuelve al texto escrito al salir por arriba o por abajo
       setActiveIndex((index) => {
         const next = index + step
         if (next >= suggestions.length) return -1
@@ -195,7 +195,7 @@ function Landing({ initialQuery, error, onSearch }) {
                         id={`place-${index}`}
                         role="option"
                         aria-selected={index === activeIndex}
-                        // mousedown en vez de click: el blur del input cerraría la lista antes.
+                        //mousedown en vez de click: el blur del input cerraría la lista antes
                         onMouseDown={(event) => {
                           event.preventDefault()
                           pick(suggestion)
@@ -228,7 +228,7 @@ function Landing({ initialQuery, error, onSearch }) {
             <SignPhoto onPick={onSearch} />
           </div>
 
-          {/* La carretera lleva de la portada a las preguntas frecuentes */}
+          {/*La carretera lleva de la portada a las preguntas frecuentes*/}
           <Road slow className="-mx-4 -mb-6 h-36 shrink-0 mask-b-from-60% sm:-mx-6 sm:-mb-8 sm:h-48" />
         </section>
 

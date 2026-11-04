@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { debugOptions, setDebugOptions, SOURCE_MODES } from '../services/debugOptions.js'
 
-// TEMPORAL: panel de pruebas para comparar OSM con las fotos escaneadas. Solo en desarrollo.
+//TEMPORAL: panel de pruebas para comparar OSM con las fotos escaneadas, solo en desarrollo
 function DebugPanel({ onChange }) {
   const [options, setOptions] = useState(debugOptions)
 

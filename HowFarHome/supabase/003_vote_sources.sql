@@ -1,11 +1,10 @@
--- Guarda con cada voto de dónde salió el candidato y su puntuación, para medir la precisión.
--- Ejecuta este archivo en el SQL Editor de Supabase (después de 002_sign_reports.sql).
+--Guarda con cada voto de dónde salió el candidato y su puntuación, para medir la precisión
+--Va después de 002_sign_reports.sql
 alter table public.sign_votes
   add column if not exists source text check (source in ('destination', 'road-name', 'user')),
   add column if not exists score smallint check (score between -10 and 10);
 
--- Precisión por tipo de indicio y por puntuación: qué parte de los votos dice que el cartel existe.
--- Consúltala en el SQL Editor con: select * from public.sign_vote_precision;
+--Precisión por tipo de indicio y por puntuación: qué parte de los votos dice que el cartel existe
 create or replace view public.sign_vote_precision
 with (security_invoker = true) as
 select
@@ -18,5 +17,5 @@ from public.sign_votes
 group by 1, 2
 order by 1, 2 desc;
 
--- Es una herramienta para ti, no para la app.
+--Solo para análisis, la app no la lee
 revoke all on public.sign_vote_precision from anon, authenticated;

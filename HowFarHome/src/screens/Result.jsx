@@ -10,7 +10,7 @@ import { applyReports, submitReport } from '../services/reports.js'
 import { signKey } from '../services/signs.js'
 import { castVote, myVote, verdict } from '../services/votes.js'
 
-// El editor lleva el mapa (Leaflet): solo se descarga al abrirlo.
+//El editor lleva el mapa (Leaflet): solo se descarga al abrirlo
 const SignEditor = lazy(() => import('../components/SignEditor.jsx'))
 
 const COUNT_UP_MS = 1400
@@ -45,8 +45,8 @@ function verdictsFor(candidates, votes) {
   return Object.fromEntries(candidates.map((sign) => [sign.key, verdict(votes[sign.key])]))
 }
 
-// Para ser el resultado principal hace falta confianza: una foto donde se lee el nombre, una
-// etiqueta de destino de OSM o votos a favor. Los añadidos por usuarios necesitan confirmación.
+//Para ser el resultado principal hace falta confianza: una foto donde se lee el nombre, una
+//etiqueta de destino de OSM o votos a favor. Los añadidos por usuarios necesitan confirmación
 function canLead(sign, verdicts) {
   const verdict = verdicts[sign.key]
   if (verdict === 'rejected') return false
@@ -54,7 +54,7 @@ function canLead(sign, verdicts) {
   return sign.source !== 'user' && sign.confidence !== 'baja'
 }
 
-// El más lejano que puede liderar; si ninguno puede, el más lejano no descartado.
+//El más lejano que puede liderar; si ninguno puede, el más lejano no descartado
 function leaderOf(candidates, verdicts) {
   return (
     candidates.find((sign) => canLead(sign, verdicts)) ??
@@ -71,7 +71,7 @@ function Result({ result, onSearchAnother }) {
   const [voteError, setVoteError] = useState(null)
   const [editor, setEditor] = useState(null)
   const [notice, setNotice] = useState(null)
-  // Memorizado: los hooks de detalles y fotos dependen de que los objetos no cambien en cada render.
+  //Memorizado: los hooks de detalles y fotos dependen de que los objetos no cambien en cada render
   const candidates = useMemo(() => applyReports(result.candidates, reports, home), [result.candidates, reports, home])
   const verdicts = verdictsFor(candidates, votes)
   const [selectedKey, setSelectedKey] = useState(
@@ -98,7 +98,7 @@ function Result({ result, onSearchAnother }) {
       const updated = { ...votes, [sign.key]: tally }
       setVotes(updated)
 
-      // Si lo descartan, pasamos al siguiente candidato que siga en pie.
+      //Si lo descartan, pasamos al siguiente candidato que siga en pie
       if (verdict(tally) === 'rejected') {
         setSelectedKey(leaderOf(candidates, verdictsFor(candidates, updated)).key)
       }

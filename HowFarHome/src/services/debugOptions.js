@@ -1,4 +1,4 @@
-// TEMPORAL: opciones de pruebas para comparar fuentes. Solo existen en desarrollo.
+//TEMPORAL: opciones de pruebas para comparar fuentes, solo en desarrollo
 const STORAGE_KEY = 'howfarhome:debug'
 
 export const SOURCE_MODES = {
@@ -22,11 +22,11 @@ export function setDebugOptions(options) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(options))
   } catch {
-    // Sin almacenamiento las opciones duran lo que la pestaña.
+    //Sin almacenamiento las opciones duran lo que la pestaña
   }
 }
 
-// Los nodos de pueblo se quedan siempre: sirven para descartar homónimos.
+//Los nodos de pueblo se quedan siempre: sirven para descartar homónimos
 export function filterBySource(elements, sources) {
   if (sources === 'osm') return elements.filter((element) => element.type !== 'photo')
   if (sources === 'photo') return elements.filter((element) => element.type === 'photo' || element.tags?.place)

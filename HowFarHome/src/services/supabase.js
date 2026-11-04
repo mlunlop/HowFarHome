@@ -1,5 +1,4 @@
-// Acceso a Supabase compartido por votos y aportaciones. Sin configurarlo,
-// todo se guarda solo en este navegador para poder probar la app.
+//Supabase para votos y aportaciones, sin configurar todo queda en este navegador
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY
 const CLIENT_ID = 'howfarhome:client-id'
@@ -18,11 +17,11 @@ export function writeJson(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch {
-    // Sin almacenamiento el dato se pierde al recargar, pero la app sigue funcionando.
+    //Sin almacenamiento el dato se pierde al recargar, pero la app sigue funcionando
   }
 }
 
-// Error de Supabase con un mensaje para la persona cuando es por exceso de aportaciones.
+//Error de Supabase con un mensaje para la persona cuando es por exceso de aportaciones
 export class SupabaseError extends Error {
   constructor(status, body) {
     super(`Supabase respondió ${status}`)
@@ -40,7 +39,7 @@ export async function supabase(path, init = {}) {
   return response
 }
 
-// Identificador anónimo de este navegador para los topes de aportaciones.
+//Identificador anónimo de este navegador para los topes de aportaciones
 export function clientId() {
   let id = readJson(CLIENT_ID, null)
   if (!id) {

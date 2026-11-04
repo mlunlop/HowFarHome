@@ -1,7 +1,5 @@
-# Escanea con OCR los carteles de dirección de Mapillary en toda España, repartido entre
-# muchas máquinas de GitHub a la vez. Se lanza a mano desde la pestaña Actions.
-# Si algún trozo no acaba a tiempo, basta con lanzarlo otra vez con la misma versión:
-# cada trozo guarda su progreso en la caché y los ya terminados acaban en un minuto.
+#OCR de los carteles de Mapillary de toda España repartido entre varias máquinas
+#Relanzado con la misma versión, cada trozo sigue desde su progreso en caché
 name: Escanear carteles de España
 
 on:
@@ -62,13 +60,13 @@ jobs:
       - name: Escanear el trozo ${{ matrix.shard }} de ${{ inputs.shards }}
         env:
           MAPILLARY_TOKEN: ${{ secrets.MAPILLARY_TOKEN }}
-          # Se para a las 5 h y guarda lo hecho, antes de que GitHub corte la tarea.
+          #Se para a las 5 h y guarda lo hecho, antes de que GitHub corte la tarea
           SCAN_BUDGET_MIN: "300"
           BOX_WORKERS: "4"
           PHOTO_WORKERS: "4"
           PYTHONIOENCODING: utf-8
-        # Se ocultan los avisos de fotos sin texto; grep sin líneas que mostrar no es un fallo.
-        # --line-buffered: sin él, grep retiene el registro y no se ve el progreso en directo.
+        #Se ocultan los avisos de fotos sin texto; grep sin líneas que mostrar no es un fallo
+        #--line-buffered para ver el progreso en directo
         shell: bash -o pipefail {0}
         run: python scripts/scan_mapillary_signs.py scan spain ${{ matrix.shard }}/${{ inputs.shards }} 2>&1 | { grep --line-buffered -v "text detection result is empty" || [ $? -eq 1 ]; }
 
@@ -91,7 +89,7 @@ jobs:
 
   export:
     needs: scan
-    # Aunque fallen trozos se exporta lo leído; si se cancela la ejecución, no.
+    #Aunque fallen trozos se exporta lo leído; si se cancela la ejecución, no
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:

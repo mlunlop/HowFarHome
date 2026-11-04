@@ -33,7 +33,7 @@ function StreetViewWindow({ municipality, sign, panorama }) {
             referrerPolicy="no-referrer-when-downgrade"
           />
         ) : (
-          // Google instala cookies al mostrar Street View: no se carga sin permiso.
+          //Google instala cookies al mostrar Street View: no se carga sin permiso
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
             <p className="max-w-sm text-sm text-pretty text-white/70">
               Street View lo sirve Google, que instala sus propias cookies. Cárgalo para ver la foto del cartel.

@@ -4,6 +4,7 @@ Uso:
     data/.venv/Scripts/python scripts/scan_mapillary_signs.py scan jaen
     data/.venv/Scripts/python scripts/scan_mapillary_signs.py scan spain 3/100
     data/.venv/Scripts/python scripts/scan_mapillary_signs.py export
+    data/.venv/Scripts/python scripts/scan_mapillary_signs.py clean
 
 'scan spain 3/100' escanea el trozo 3 de 100 de España: así lo reparte GitHub Actions
 (.github/workflows/scan-spain.yml) entre muchas máquinas a la vez.
@@ -15,6 +16,10 @@ parar y volver a lanzar: sigue donde lo dejó.
 'export' escribe public/sign-index/photo/: cada cartel leído, indexado por las palabras de
 su texto. La web carga los carteles que contienen las palabras del municipio buscado y
 comprueba allí si el nombre completo aparece (textMentions en src/services/signs.js).
+Antes corrige las letras mal leídas en los nombres de pueblos cercanos (clean_ocr.py).
+
+'clean' hace lo mismo con un índice ya exportado en public/sign-index/photo/, como el
+artefacto photo-index que genera GitHub: descomprímelo ahí y ejecuta 'clean'.
 Necesita el token de Mapillary en la variable MAPILLARY_TOKEN o VITE_MAPILLARY_TOKEN en .env.local.
 Con SCAN_BUDGET_MIN se para a tiempo y guarda lo hecho; al relanzarlo sigue donde iba.
 """
@@ -40,55 +45,53 @@ CACHE_DIR = ROOT / "data" / "mapillary"
 INDEX_DIR = ROOT / "public" / "sign-index"
 OUT_DIR = INDEX_DIR / "photo"
 
-# Zonas preparadas: (sur, oeste, norte, este).
+#Zonas preparadas: (sur, oeste, norte, este)
 AREAS = {
     "jaen": (37.36, -4.27, 38.53, -2.48),
-    # Zona pequeña entre Jódar, Úbeda, Peal y Cazorla para probar el escáner.
+    #Zona pequeña entre Jódar, Úbeda, Peal y Cazorla para probar el escáner
     "prueba-jodar": (37.85, -3.40, 38.02, -2.98),
 }
 
-# España por comunidades autónomas (sur, oeste, norte, este): se recorren los recuadros que
-# tocan alguna, lo que evita casi todo el mar sin dejar fuera ningún trozo de costa.
+#Recuadros por comunidad autónoma (sur, oeste, norte, este), evitan casi todo el mar sin perder costa
 SPAIN = [
-    (41.75, -9.35, 43.82, -6.70),   # Galicia
-    (42.85, -7.20, 43.70, -4.50),   # Asturias
-    (42.70, -4.90, 43.55, -3.10),   # Cantabria
-    (42.45, -3.50, 43.47, -1.70),   # País Vasco
-    (41.90, -2.50, 43.32, -0.70),   # Navarra
-    (41.90, -3.15, 42.65, -1.65),   # La Rioja
-    (39.80, -2.20, 42.95, 0.80),    # Aragón
-    (40.50, 0.15, 42.90, 3.35),     # Cataluña
-    (40.05, -7.10, 43.25, -1.75),   # Castilla y León
-    (39.85, -4.60, 41.17, -3.05),   # Madrid
-    (38.00, -5.45, 41.35, -0.90),   # Castilla-La Mancha
-    (37.90, -7.60, 40.50, -4.60),   # Extremadura
-    (37.80, -1.55, 40.80, 0.70),    # Comunitat Valenciana
-    (37.35, -2.35, 38.77, -0.65),   # Región de Murcia
-    (35.90, -7.55, 38.75, -1.60),   # Andalucía
-    (38.60, 1.15, 40.10, 4.35),     # Illes Balears
-    (27.60, -18.20, 29.45, -13.40), # Canarias
-    (35.86, -5.40, 35.93, -5.26),   # Ceuta
-    (35.26, -2.98, 35.33, -2.91),   # Melilla
+    (41.75, -9.35, 43.82, -6.70),   #Galicia
+    (42.85, -7.20, 43.70, -4.50),   #Asturias
+    (42.70, -4.90, 43.55, -3.10),   #Cantabria
+    (42.45, -3.50, 43.47, -1.70),   #País Vasco
+    (41.90, -2.50, 43.32, -0.70),   #Navarra
+    (41.90, -3.15, 42.65, -1.65),   #La Rioja
+    (39.80, -2.20, 42.95, 0.80),    #Aragón
+    (40.50, 0.15, 42.90, 3.35),     #Cataluña
+    (40.05, -7.10, 43.25, -1.75),   #Castilla y León
+    (39.85, -4.60, 41.17, -3.05),   #Madrid
+    (38.00, -5.45, 41.35, -0.90),   #Castilla-La Mancha
+    (37.90, -7.60, 40.50, -4.60),   #Extremadura
+    (37.80, -1.55, 40.80, 0.70),    #Comunitat Valenciana
+    (37.35, -2.35, 38.77, -0.65),   #Región de Murcia
+    (35.90, -7.55, 38.75, -1.60),   #Andalucía
+    (38.60, 1.15, 40.10, 4.35),     #Illes Balears
+    (27.60, -18.20, 29.45, -13.40), #Canarias
+    (35.86, -5.40, 35.93, -5.26),   #Ceuta
+    (35.26, -2.98, 35.33, -2.91),   #Melilla
 ]
 
-# Lado de cada recuadro de búsqueda. Con 0,09° la API responde error 500; con 0,05°, bien.
+#Lado de cada recuadro, con 0,09° la API ya da error 500
 BOX_DEGREES = 0.04
-# Máximo de señales por petición: si un recuadro lo alcanza, se divide en cuatro.
+#Máximo de señales por petición: si un recuadro lo alcanza, se divide en cuatro
 BOX_LIMIT = 2000
-# Recuadros pedidos a la vez. Casi todo el tiempo se va esperando a la API, no en la CPU.
+#Recuadros pedidos a la vez, casi todo el tiempo es esperar a la API
 BOX_WORKERS = int(os.environ.get("BOX_WORKERS", 4))
-# Fotos descargadas a la vez mientras el OCR lee la anterior.
+#Fotos descargadas a la vez mientras el OCR lee la anterior
 PHOTO_WORKERS = int(os.environ.get("PHOTO_WORKERS", 4))
-# Minutos de trabajo antes de pararse ordenadamente (GitHub corta las tareas a las 6 h).
+#Minutos de trabajo antes de pararse ordenadamente (GitHub corta las tareas a las 6 h)
 BUDGET_MIN = float(os.environ.get("SCAN_BUDGET_MIN", 0)) or None
 STARTED = time.time()
-# Comprobado: un recuadro con bordes en valores redondos (-3.36, 37.89) devuelve 0 resultados
-# aunque tenga señales; desplazado una milésima, sí. Por eso la cuadrícula se desplaza un
-# poco y los recuadros se solapan (los repetidos se quitan por id).
+#Con bordes en valores redondos (-3.36, 37.89) la API devuelve 0 resultados aunque haya señales
+#por eso la cuadrícula va desplazada y los recuadros se solapan (los repetidos se quitan por id)
 BOX_OFFSET = 0.00037
 BOX_OVERLAP = 0.002
 GRAPH ="https://graph.mapillary.com"
-# Tipos de señal de Mapillary que suelen llevar nombres de destino.
+#Tipos de señal de Mapillary que suelen llevar nombres de destino
 DIRECTION_SIGNS = re.compile(
     r"^information--(general-directions|directions|highway-exit|highway-interchange|motorway-exit-ahead|exit-ahead)"
     r"|^complementary--texts"
@@ -96,14 +99,14 @@ DIRECTION_SIGNS = re.compile(
 MAX_DETECTIONS = 6
 CROP_PADDING = 0.15
 MIN_CROP_WIDTH = 400
-# Con la foto de 2048 px un cartel lejano queda diminuto: entonces se usa la original.
+#Con la foto de 2048 px un cartel lejano queda diminuto: entonces se usa la original
 MIN_THUMB_CROP_WIDTH = 120
 RETRIES = 4
-# Por debajo de este lado (unos 500 m) un recuadro que da error 500 ya no se divide más.
+#Por debajo de este lado (unos 500 m) un recuadro que da error 500 ya no se divide más
 MIN_SPLIT_DEGREES = 0.006
 
-# Palabras más cortas no se indexan: "de", "la", "a"... no distinguen ningún pueblo.
-# Debe coincidir con MIN_PHOTO_WORD_LENGTH de src/services/signIndex.js
+#Palabras más cortas no se indexan: "de", "la", "a"... no distinguen ningún pueblo
+#Debe coincidir con MIN_PHOTO_WORD_LENGTH de src/services/signIndex.js
 MIN_WORD_LENGTH = 4
 
 
@@ -160,12 +163,12 @@ def box_signs(box, key):
             bbox=f"{west:.5f},{south:.5f},{east:.5f},{north:.5f}",
             fields="id,object_value,geometry",
             limit=BOX_LIMIT,
-            # Un 500 aquí suele repetirse: mejor dividir pronto que esperar a los reintentos.
+            #Un 500 aquí suele repetirse: mejor dividir pronto que esperar a los reintentos
             retries=2,
         ) or {}
     except urllib.error.HTTPError as error:
-        # Con muchas señales en el recuadro la API se rinde con un error 500 aunque no llegue
-        # al límite: en cuatro trozos más pequeños sí responde.
+        #Con muchas señales en el recuadro la API se rinde con un error 500 aunque no llegue
+        #al límite: en cuatro trozos más pequeños sí responde
         if error.code == 500 and east - west > MIN_SPLIT_DEGREES:
             return split_box(box, key)
         raise
@@ -209,7 +212,7 @@ def area_boxes(area, shard=None):
     boxes = sorted({box for region in SPAIN for box in grid(*region, origin_lat=27.0, origin_lng=-18.5)})
     if not shard:
         return boxes
-    # Recuadros salteados: cada trozo recibe un poco de ciudad y un poco de campo.
+    #Recuadros salteados: cada trozo recibe un poco de ciudad y un poco de campo
     index, count = shard
     return boxes[index - 1::count]
 
@@ -220,7 +223,7 @@ def list_signs(area, boxes, key):
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8")), True
 
-    # Progreso parcial: recuadros ya leídos y carteles encontrados, para poder reanudar.
+    #Progreso parcial: recuadros ya leídos y carteles encontrados, para poder reanudar
     progress_path = CACHE_DIR / f"signs-{area}.partial.json"
     progress = json.loads(progress_path.read_text(encoding="utf-8")) if progress_path.exists() else {"done": [], "signs": {}}
     done = {tuple(b) for b in progress["done"]}
@@ -241,7 +244,7 @@ def list_signs(area, boxes, key):
                 continue
             try:
                 signs.update(future.result())
-            except Exception as error:  # se reintentará al volver a lanzar el escaneo
+            except Exception as error:  #se reintentará al volver a lanzar el escaneo
                 failed += 1
                 print(f"  recuadro {futures[future]} falló: {str(error)[:80]}", flush=True)
                 continue
@@ -259,7 +262,7 @@ def list_signs(area, boxes, key):
         print(f"Se acabó el tiempo: {len(done)}/{len(boxes)} recuadros. Relanza para seguir.", flush=True)
         return None
     if failed:
-        # Se leen ya los carteles encontrados; los recuadros que fallaron quedan para la próxima vez.
+        #Se leen ya los carteles encontrados; los recuadros que fallaron quedan para la próxima vez
         print(f"{failed} recuadros fallaron: relanza el escaneo para completarlos.", flush=True)
         return signs, False
     path.write_text(json.dumps(signs), encoding="utf-8")
@@ -323,7 +326,7 @@ def download_sign(sign_id, key):
     _, image_id, box = best
     image = graph(image_id, key, fields="thumb_2048_url,thumb_original_url,width") or {}
     url = image.get("thumb_2048_url")
-    # Si en la foto reducida el cartel mide pocos píxeles, se descarga la original.
+    #Si en la foto reducida el cartel mide pocos píxeles, se descarga la original
     if url and image.get("width") and (box[2] - box[0]) * min(2048, image["width"]) < MIN_THUMB_CROP_WIDTH:
         url = image.get("thumb_original_url") or url
     if not url:
@@ -336,7 +339,7 @@ def download_sign(sign_id, key):
 def read_sign(download, engine):
     try:
         image_id, crop = download.result()
-    except Exception as error:  # una foto rota no debe parar el escaneo
+    except Exception as error:  #una foto rota no debe parar el escaneo
         return {"text": "", "image": None, "error": str(error)[:120]}
     if crop is None:
         return {"text": "", "image": image_id}
@@ -352,7 +355,7 @@ def scan(area, shard=None):
     boxes = area_boxes(area, shard)
     print(f"Listando carteles de dirección en {label} ({len(boxes)} recuadros)…", flush=True)
     status_path = CACHE_DIR / f"status-{label}.txt"
-    # Si se corta antes de acabar, queda marcado como incompleto para el resumen de GitHub.
+    #Si se corta antes de acabar, queda marcado como incompleto para el resumen de GitHub
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     status_path.write_text("incompleto", encoding="utf-8")
     listed = list_signs(label, boxes, key)
@@ -369,7 +372,7 @@ def scan(area, shard=None):
 
     engine = RapidOCR()
     started = time.time()
-    # Las descargas van por delante del OCR: mientras lee un cartel, bajan los siguientes.
+    #Las descargas van por delante del OCR: mientras lee un cartel, bajan los siguientes
     with results_path.open("a", encoding="utf-8") as out, ThreadPoolExecutor(max_workers=PHOTO_WORKERS) as pool:
         downloads = [pool.submit(download_sign, sign_id, key) for sign_id in pending]
         for i, (sign_id, download) in enumerate(zip(pending, downloads), 1):
@@ -403,31 +406,61 @@ def words_of(text):
     return {word for word in normalize(text).split() if len(word) >= MIN_WORD_LENGTH and not word.isdigit()}
 
 
-def export():
-    index = defaultdict(lambda: defaultdict(list))
-    read = 0
-    seen = set()
+def read_scans():
+    """Carteles leídos en data/mapillary/, cada uno una vez."""
+    signs = {}
     for path in sorted(CACHE_DIR.glob("ocr-*.jsonl")):
         for line in path.read_text(encoding="utf-8").splitlines():
-            if not line:
-                continue
-            sign = json.loads(line)
-            # Los recuadros se solapan y las zonas pueden coincidir: un cartel, una vez.
-            if sign["id"] in seen:
-                continue
-            seen.add(sign["id"])
-            words = words_of(sign["text"])
-            if not words:
-                continue
-            read += 1
-            entry = {
-                "t": "m",
-                "id": sign["id"],
-                "tg": {"ocr": sign["text"], "image": sign["image"], "value": sign["value"]},
-                "g": [[sign["lat"], sign["lng"]]],
-            }
-            for word in words:
-                index[shard_of(word)][word].append(entry)
+            if line:
+                sign = json.loads(line)
+                #Los recuadros se solapan y las zonas pueden coincidir: un cartel, una vez
+                signs.setdefault(sign["id"], sign)
+    return list(signs.values())
+
+
+def read_index():
+    """Carteles de un índice ya exportado, con su texto original (p. ej. el que da GitHub)."""
+    signs = {}
+    for path in OUT_DIR.glob("*.json"):
+        if path.name == "meta.json":
+            continue
+        for entries in json.loads(path.read_text(encoding="utf-8")).values():
+            for entry in entries:
+                tags = entry["tg"]
+                lat, lng = entry["g"][0]
+                signs.setdefault(entry["id"], {
+                    "id": entry["id"], "lat": lat, "lng": lng, "value": tags["value"],
+                    "text": tags.get("raw", tags["ocr"]), "image": tags["image"],
+                })
+    return list(signs.values())
+
+
+def cleaner_for(signs):
+    if not any(INDEX_DIR.glob("*.json")):
+        print("Sin el índice de OSM (build_sign_index.py) no se corrige el texto leído.")
+        return None
+    import clean_ocr
+    places = clean_ocr.Places(INDEX_DIR)
+    print(f"{len(places)} nombres de pueblos para corregir el OCR")
+    return clean_ocr.Cleaner(places, signs)
+
+
+def export(signs):
+    cleaner = cleaner_for(signs)
+    index = defaultdict(lambda: defaultdict(list))
+    read = 0
+    for sign in signs:
+        tags = {"ocr": sign["text"], "image": sign["image"], "value": sign["value"]}
+        cleaned = cleaner and cleaner.clean(sign)
+        if cleaned:
+            tags.update(ocr=cleaned, raw=sign["text"])
+        words = words_of(tags["ocr"])
+        if not words:
+            continue
+        read += 1
+        entry = {"t": "m", "id": sign["id"], "tg": tags, "g": [[sign["lat"], sign["lng"]]]}
+        for word in words:
+            index[shard_of(word)][word].append(entry)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for old in OUT_DIR.glob("*.json"):
@@ -435,13 +468,21 @@ def export():
     for shard, keys in index.items():
         (OUT_DIR / f"{shard}.json").write_text(json.dumps(keys, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     meta = {"generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"), "signsRead": read}
+    if cleaner:
+        meta["corrections"] = sum(cleaner.fixes.values())
+        report = CACHE_DIR / "corrections.txt"
+        report.parent.mkdir(parents=True, exist_ok=True)
+        report.write_text("".join(f"{n:5}  {fix}\n" for fix, n in cleaner.fixes.most_common()), encoding="utf-8")
+        print(f"{meta['corrections']} palabras corregidas: lista en {report}")
     (OUT_DIR / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     print(f"{read} carteles con texto · {len(index)} ficheros en {OUT_DIR}")
 
 
 if __name__ == "__main__":
     if len(sys.argv) >= 2 and sys.argv[1] == "export":
-        export()
+        export(read_scans())
+    elif len(sys.argv) == 2 and sys.argv[1] == "clean":
+        export(read_index())
     elif len(sys.argv) == 3 and sys.argv[1] == "scan" and sys.argv[2] in AREAS:
         scan(sys.argv[2])
     elif len(sys.argv) == 4 and sys.argv[1] == "scan" and sys.argv[2] == "spain" and re.fullmatch(r"\d+/\d+", sys.argv[3]):

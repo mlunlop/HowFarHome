@@ -21,7 +21,7 @@ export function bearingDegrees(from, to) {
   return Math.round(toDegrees(Math.atan2(y, x)) + 360) % 360
 }
 
-// Punto a cierta distancia de otro siguiendo un rumbo.
+//Punto a cierta distancia de otro siguiendo un rumbo
 export function movePoint(point, headingDegrees, km) {
   const angular = km / EARTH_RADIUS_KM
   const heading = toRadians(headingDegrees)

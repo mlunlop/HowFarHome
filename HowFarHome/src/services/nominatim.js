@@ -2,15 +2,15 @@ import { distanceKm } from './geo.js'
 import { normalizeName } from './signs.js'
 
 const BASE_URL = 'https://nominatim.openstreetmap.org'
-// La política de uso de Nominatim pide como máximo una petición por segundo.
+//La política de uso de Nominatim pide como máximo una petición por segundo
 const MIN_INTERVAL_MS = 1000
 const MAX_PLACES = 10
-// Resultados con el mismo nombre a menos de esto son el mismo sitio (nodo y término municipal).
+//Resultados con el mismo nombre a menos de esto son el mismo sitio (nodo y término municipal)
 const SAME_PLACE_KM = 5
-// El centro de un término municipal grande puede quedar lejos del nodo de la ciudad
-// (Zaragoza: 5 km). Junto a un municipio, el núcleo homónimo cercano es el mismo sitio.
+//El centro de un municipio grande puede quedar lejos del núcleo (Zaragoza: 5 km)
+//así que un núcleo homónimo cercano cuenta como el mismo sitio
 const SAME_MUNICIPALITY_KM = 15
-// Nombres que pueden aparecer en los carteles: el local y los de las lenguas cooficiales.
+//Nombres que pueden aparecer en los carteles: el local y los de las lenguas cooficiales
 const SIGN_NAME_KEYS = ['name', 'name:es', 'name:ca', 'name:eu', 'name:gl', 'name:oc', 'official_name']
 
 const KIND_LABELS = {
@@ -39,21 +39,21 @@ async function request(path, params, signal) {
   return response.json()
 }
 
-// En España los municipios son admin_level 8, que Nominatim traduce a place_rank 16.
-// Las parroquias de Asturias o Galicia también son límites administrativos, pero de rango menor.
+//En España los municipios son admin_level 8, que Nominatim traduce a place_rank 16
+//Las parroquias de Asturias o Galicia también son límites administrativos, pero de rango menor
 const MUNICIPALITY_RANK = 16
 
-// Según la zona, Nominatim guarda la provincia en province, state_district o county.
+//Según la zona, Nominatim guarda la provincia en province, state_district o county
 function provinceOf(address) {
   return address.province ?? address.state_district ?? address.county ?? address.state ?? null
 }
 
-// Provincias, comunidades y comarcas también son límites administrativos, pero no pueblos.
+//Provincias, comunidades y comarcas también son límites administrativos, pero no pueblos
 function isSettlement(match) {
   return match.category !== 'boundary' || match.place_rank >= MUNICIPALITY_RANK
 }
 
-// Otros nombres del sitio: Nominatim responde «Lérida», pero los carteles dicen «Lleida».
+//Otros nombres del sitio: Nominatim responde «Lérida», pero los carteles dicen «Lleida»
 function aliasesOf(match) {
   const details = match.namedetails ?? {}
   const seen = new Set([normalizeName(match.name)])
@@ -76,7 +76,7 @@ function toPlace(match) {
     name: match.name,
     aliases: aliasesOf(match),
     region,
-    // Para aldeas, el municipio al que pertenecen ayuda a distinguirlas.
+    //Para aldeas, el municipio al que pertenecen ayuda a distinguirlas
     detail: parent && parent !== match.name ? parent : null,
     kind:
       match.category === 'boundary' && match.place_rank === MUNICIPALITY_RANK
@@ -88,7 +88,7 @@ function toPlace(match) {
   }
 }
 
-// Todos los sitios de España que encajan con el texto, municipios primero.
+//Todos los sitios de España que encajan con el texto, municipios primero
 export async function searchPlaces(text, { signal, limit = MAX_PLACES } = {}) {
   const matches = await request(
     'search',
@@ -96,7 +96,7 @@ export async function searchPlaces(text, { signal, limit = MAX_PLACES } = {}) {
     signal,
   )
 
-  // Municipios primero: así el núcleo homónimo se descarta frente a su municipio y no al revés.
+  //Municipios primero: así el núcleo homónimo se descarta frente a su municipio y no al revés
   const found = matches
     .filter(isSettlement)
     .map(toPlace)
@@ -113,7 +113,7 @@ export async function searchPlaces(text, { signal, limit = MAX_PLACES } = {}) {
   return places
 }
 
-// Un código postal apunta a una zona: buscamos después el pueblo para tener su centro.
+//Un código postal apunta a una zona: buscamos después el pueblo para tener su centro
 export async function placesForPostcode(postcode, { signal } = {}) {
   const [match] = await request(
     'search',

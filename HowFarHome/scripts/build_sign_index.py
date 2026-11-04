@@ -22,7 +22,7 @@ import osmium
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "public" / "sign-index"
 
-# Deben coincidir con DESTINATION_KEYS y NAMED_ROAD_HIGHWAYS de src/services/signs.js
+#Deben coincidir con DESTINATION_KEYS y NAMED_ROAD_HIGHWAYS de src/services/signs.js
 DESTINATION_KEYS = ("destination", "destination:forward", "destination:backward")
 NAMED_ROAD_HIGHWAYS = {"trunk", "primary", "secondary", "tertiary", "unclassified"}
 PLACE_TYPES = {"city", "town", "village", "hamlet"}
@@ -31,7 +31,7 @@ KEPT_TAGS = DESTINATION_KEYS + ("destination:ref", "ref", "highway", "name", "to
 ROAD_NAME = re.compile(r"^(carretera|ctra)\b")
 JOINTS = (" de ", " a ", " hacia ")
 MAX_NAME_WORDS = 6
-# Palabras por las que se corta un nombre largo para obtener su forma abreviada.
+#Palabras por las que se corta un nombre largo para obtener su forma abreviada
 SHORT_NAME_CUTS = {"de", "del", "la", "el", "los", "las"}
 
 
@@ -85,7 +85,7 @@ class SignCollector(osmium.SimpleHandler):
         self.index = defaultdict(lambda: defaultdict(dict))
         self.elements = {}
         self.counts = defaultdict(int)
-        # Las carreteras se indexan al final, solo bajo nombres que existen como núcleo.
+        #Las carreteras se indexan al final, solo bajo nombres que existen como núcleo
         self.road_keys = defaultdict(dict)
         self.place_names = set()
 
@@ -114,7 +114,7 @@ class SignCollector(osmium.SimpleHandler):
                 if key := normalize(variant):
                     self.add(key, f"p{n.id}", element)
                     self.place_names.add(key)
-                    # "La Roda de Andalucía" aparece en los carteles como "La Roda".
+                    #"La Roda de Andalucía" aparece en los carteles como "La Roda"
                     alias = {**element, "tg": {**place_tags, "alias": "1"}}
                     for short in short_names(key):
                         self.add(short, f"a{n.id}", alias)
@@ -135,7 +135,7 @@ class SignCollector(osmium.SimpleHandler):
         if not nodes:
             return
 
-        # Primeros y últimos dos nodos: bastan para situar el cartel y su sentido.
+        #Primeros y últimos dos nodos: bastan para situar el cartel y su sentido
         geometry = nodes if len(nodes) <= 4 else nodes[:2] + nodes[-2:]
         element_id = f"w{w.id}"
         element = {"t": "w", "id": w.id, "tg": self.kept_tags(tags), "g": geometry}

@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 
-// Páginas estáticas: cada una es un HTML propio para que se indexe y funcione en cualquier alojamiento.
+//Páginas estáticas: cada una es un HTML propio para que se indexe y funcione en cualquier alojamiento
 const PAGES = {
   main: { html: 'index.html', path: '/', priority: '1.0', changefreq: 'weekly' },
   avisoLegal: { html: 'aviso-legal/index.html', path: '/aviso-legal/', priority: '0.2', changefreq: 'yearly' },
@@ -12,7 +12,7 @@ const PAGES = {
   creditos: { html: 'creditos/index.html', path: '/creditos/', priority: '0.4', changefreq: 'monthly' },
 }
 
-// Etiquetas comunes a todas las páginas. Consent Mode v2 arranca denegado hasta que la persona elige.
+//Etiquetas comunes a todas las páginas, Consent Mode v2 arranca denegado hasta que se elige
 const COMMON_HEAD = `
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -59,7 +59,6 @@ ${Object.values(PAGES)
   }
 }
 
-// https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
   const siteUrl = (env.VITE_SITE_URL || 'https://howfarhome.es').replace(/\/$/, '')

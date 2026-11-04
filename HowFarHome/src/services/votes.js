@@ -1,4 +1,4 @@
-// Votos «sí hay cartel / no hay cartel».
+//Votos «sí hay cartel / no hay cartel»
 import { isShared, readJson, supabase, writeJson } from './supabase.js'
 
 const TABLE = 'sign_votes'
@@ -7,7 +7,7 @@ const MY_VOTES = 'howfarhome:my-votes'
 
 export const votesAreShared = isShared
 
-// Recuento por cartel: { [signKey]: { yes, no } }
+//Recuento por cartel: { [signKey]: { yes, no } }
 export async function fetchVotes(municipalityKey, { signal } = {}) {
   let rows
   if (isShared) {
@@ -32,7 +32,7 @@ export function myVote(municipalityKey, key) {
   return readJson(MY_VOTES)[`${municipalityKey}|${key}`] ?? null
 }
 
-// source y score permiten medir qué indicios aciertan (ver supabase/003_vote_sources.sql).
+//source y score permiten medir qué indicios aciertan (ver supabase/003_vote_sources.sql)
 export async function castVote(municipalityKey, key, vote, { source = null, score = null } = {}) {
   const row = { municipality_key: municipalityKey, sign_key: key, vote }
   const insert = (body) =>
@@ -46,7 +46,7 @@ export async function castVote(municipalityKey, key, vote, { source = null, scor
     try {
       await insert({ ...row, source, score })
     } catch (error) {
-      // Sin la migración 003 esas columnas no existen: el voto se guarda igualmente.
+      //Sin la migración 003 esas columnas no existen: el voto se guarda igualmente
       if (error.code !== 'PGRST204') throw error
       await insert(row)
     }

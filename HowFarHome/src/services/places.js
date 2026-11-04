@@ -1,4 +1,4 @@
-// Del texto que escribe la persona a un sitio concreto con coordenadas.
+//Del texto que escribe la persona a un sitio concreto con coordenadas
 import { placesForPostcode, searchPlaces } from './nominatim.js'
 
 const CARTOCIUDAD_URL = 'https://www.cartociudad.es/geocoder/api/geocoder/candidates'
@@ -10,7 +10,7 @@ export function isPostcode(text) {
   return POSTCODE.test(text.trim())
 }
 
-// Sugerencias mientras se escribe. CartoCiudad (IGN) permite autocompletar; Nominatim no.
+//Sugerencias al escribir con CartoCiudad (IGN), Nominatim no permite autocompletar
 export async function suggestPlaces(text, { signal } = {}) {
   const query = new URLSearchParams({ q: text, limit: 15 })
   const response = await fetch(`${CARTOCIUDAD_URL}?${query}`, { signal })
@@ -26,7 +26,7 @@ export async function suggestPlaces(text, { signal } = {}) {
     const parent = !isMunicipality && candidate.muni !== name ? candidate.muni : null
     const id = `${name}|${parent}|${candidate.province}`
     if (!name) continue
-    // CartoCiudad devuelve a veces el mismo pueblo como núcleo y como municipio.
+    //CartoCiudad devuelve a veces el mismo pueblo como núcleo y como municipio
     if (seen.has(id)) {
       if (isMunicipality) suggestions.find((s) => s.id === id).kind = 'Municipio'
       continue
@@ -39,14 +39,14 @@ export async function suggestPlaces(text, { signal } = {}) {
       region: candidate.province,
       detail: parent,
       kind: isMunicipality ? 'Municipio' : 'Núcleo',
-      // Texto con el que Nominatim encuentra exactamente este sitio.
+      //Texto con el que Nominatim encuentra exactamente este sitio
       query: [name, parent, candidate.province].filter(Boolean).join(', '),
     })
   }
   return suggestions.slice(0, MAX_SUGGESTIONS)
 }
 
-// Devuelve los sitios posibles: uno si no hay duda, varios si hay que elegir.
+//Devuelve los sitios posibles: uno si no hay duda, varios si hay que elegir
 export async function resolvePlaces(input, { signal } = {}) {
   if (typeof input === 'object') {
     const [place] = await searchPlaces(input.query, { signal, limit: 1 })

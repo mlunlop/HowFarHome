@@ -1,16 +1,16 @@
--- Aportaciones sin iniciar sesión: carteles nuevos ('add') y correcciones de posición ('move').
--- Ejecuta este archivo en el SQL Editor de Supabase (después de schema.sql).
+--Aportaciones sin iniciar sesión: carteles nuevos ('add') y correcciones de posición ('move')
+--Va después de schema.sql
 create table if not exists public.sign_reports (
   id bigint generated always as identity primary key,
   kind text not null check (kind in ('add', 'move')),
   municipality_key text not null check (length(municipality_key) < 120),
-  -- Cartel corregido; en los carteles nuevos va vacío.
+  --Cartel corregido; en los carteles nuevos va vacío
   sign_key text check (length(sign_key) < 40),
-  -- Solo España, Canarias incluida.
+  --Solo España, Canarias incluida
   lat double precision not null check (lat between 27 and 44.5),
   lng double precision not null check (lng between -18.5 and 4.6),
   note text check (length(note) <= 120),
-  -- Identificador anónimo y aleatorio del navegador, solo para limitar abusos. No se publica.
+  --Id anónimo del navegador para limitar abusos, no se publica
   client_id uuid not null,
   created_at timestamptz not null default now(),
   check (kind = 'add' or sign_key is not null)
@@ -29,13 +29,13 @@ drop policy if exists "anyone can report" on public.sign_reports;
 create policy "anyone can report" on public.sign_reports
   for insert to anon with check (true);
 
--- Se puede leer todo menos client_id, y escribir solo los campos de la aportación.
+--Se puede leer todo menos client_id, y escribir solo los campos de la aportación
 revoke all on public.sign_reports from anon;
 grant select (id, kind, municipality_key, sign_key, lat, lng, note, created_at) on public.sign_reports to anon;
 grant insert (kind, municipality_key, sign_key, lat, lng, note, client_id) on public.sign_reports to anon;
 
--- Topes: 10 aportaciones por navegador y hora, y 60 por minuto en total.
--- security definer porque anon no puede leer client_id para contar.
+--Topes: 10 aportaciones por navegador y hora, y 60 por minuto en total
+--security definer porque anon no puede leer client_id para contar
 create or replace function public.limit_sign_reports()
 returns trigger
 language plpgsql

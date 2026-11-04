@@ -1,4 +1,4 @@
-// Aportaciones de usuarios sin cuenta: carteles que faltan y correcciones de posición.
+//Aportaciones de usuarios sin cuenta: carteles que faltan y correcciones de posición
 import { distanceKm } from './geo.js'
 import { signKey } from './signs.js'
 import { clientId, isShared, readJson, supabase, writeJson } from './supabase.js'
@@ -6,7 +6,7 @@ import { clientId, isShared, readJson, supabase, writeJson } from './supabase.js
 const TABLE = 'sign_reports'
 const LOCAL_REPORTS = 'howfarhome:reports'
 export const MAX_NOTE_LENGTH = 120
-// Una corrección acerca el cartel a su sitio real; más lejos sería otro cartel.
+//Una corrección acerca el cartel a su sitio real; más lejos sería otro cartel
 export const MAX_MOVE_KM = 2
 const SAME_SIGN_KM = 0.05
 
@@ -45,14 +45,14 @@ export async function submitReport(municipalityKey, { kind, signKey: key = null,
   return { ...report, created_at: new Date().toISOString() }
 }
 
-// La mediana aguanta mejor que la media a una corrección malintencionada.
+//La mediana aguanta mejor que la media a una corrección malintencionada
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b)
   const middle = Math.floor(sorted.length / 2)
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
-// Suma los carteles añadidos y coloca cada cartel donde lo sitúan las correcciones.
+//Suma los carteles añadidos y coloca cada cartel donde lo sitúan las correcciones
 export function applyReports(candidates, reports, home) {
   const moves = new Map()
   for (const report of reports.filter((r) => r.kind === 'move')) {
@@ -80,10 +80,10 @@ export function applyReports(candidates, reports, home) {
       osmUrl: null,
       distanceKm: distanceKm(report, home),
     }))
-    // Un cartel añadido encima de otro que ya está en la lista es el mismo cartel.
+    //Un cartel añadido encima de otro que ya está en la lista es el mismo cartel
     .filter((sign) => !candidates.some((other) => distanceKm(sign, other) < SAME_SIGN_KM))
 
-  // Las claves no cambian al corregir: los votos siguen asociados al cartel original.
+  //Las claves no cambian al corregir: los votos siguen asociados al cartel original
   return [...candidates, ...added].map(withMoves).sort((a, b) => b.distanceKm - a.distanceKm)
 }
 

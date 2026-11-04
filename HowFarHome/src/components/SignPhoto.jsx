@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
-// Fotos reales de Mapillary (CC BY-SA 4.0) de carteles que salen en los resultados (3 nov 2026).
-// Cada una muestra un cartel concreto y su distancia; al pulsar se busca el más lejano.
-// focus: la parte de la foto donde está el cartel, para que el recorte no lo corte.
+//Fotos reales de Mapillary (CC BY-SA 4.0) de carteles que salen en los resultados (3 nov 2026)
+//Cada una muestra un cartel concreto y su distancia; al pulsar se busca el más lejano
+//focus: la parte de la foto donde está el cartel, para que el recorte no lo corte
 const PHOTOS = [
   {
     file: 'madrid',
@@ -53,7 +53,7 @@ function SignPhoto({ onPick }) {
   const [paused, setPaused] = useState(false)
   const photo = PHOTOS[index]
 
-  // Depende de index: al elegir una foto a mano, la cuenta vuelve a empezar.
+  //Depende de index: al elegir una foto a mano, la cuenta vuelve a empezar
   useEffect(() => {
     if (paused || prefersReducedMotion()) return
     const timer = setTimeout(() => setIndex((index + 1) % PHOTOS.length), ROTATE_MS)
@@ -74,7 +74,7 @@ function SignPhoto({ onPick }) {
         aria-label={`Ver el cartel más lejano de ${photo.place.name}`}
         className="group relative block aspect-[4/3] w-full cursor-pointer overflow-hidden rounded-xl border border-white/15 bg-neutral-950 text-left"
       >
-        {/* Todas apiladas: el cambio es un fundido, sin saltos de carga */}
+        {/*Todas apiladas: el cambio es un fundido, sin saltos de carga*/}
         {PHOTOS.map((item, itemIndex) => (
           <img
             key={item.file}

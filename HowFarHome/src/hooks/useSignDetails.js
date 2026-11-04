@@ -3,10 +3,10 @@ import { describeLocation } from '../services/nominatim.js'
 import { findRoute } from '../services/osrm.js'
 import { findPanorama } from '../services/streetView.js'
 
-// Estos datos enriquecen el candidato: si un servicio falla, se queda en null.
+//Estos datos enriquecen el candidato: si un servicio falla, se queda en null
 const settle = (promise) => promise.catch(() => null)
 
-// Ruta, lugar y foto del candidato elegido. Se piden al seleccionarlo y se recuerdan.
+//Ruta, lugar y foto del candidato elegido, se piden al seleccionarlo y se recuerdan
 export function useSignDetails(sign, home) {
   const [details, setDetails] = useState({})
   const detailKey = `${sign.key}@${sign.lat},${sign.lng}`

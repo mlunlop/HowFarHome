@@ -2,7 +2,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Circle, MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
 
-// Marcador propio: el icono por defecto de Leaflet no encuentra sus imágenes con Vite.
+//Marcador propio: el icono por defecto de Leaflet no encuentra sus imágenes con Vite
 const pinIcon = L.divIcon({
   className: 'sign-pin',
   html: '<span></span>',
@@ -15,7 +15,7 @@ function PlaceOnClick({ onChange }) {
   return null
 }
 
-// limit: { center, radiusKm } para enseñar hasta dónde se puede mover un cartel.
+//limit: { center, radiusKm } para enseñar hasta dónde se puede mover un cartel
 function LocationPicker({ center, value, onChange, limit, zoom = 16 }) {
   return (
     <MapContainer

@@ -4,10 +4,10 @@ const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 const METADATA_URL = 'https://maps.googleapis.com/maps/api/streetview/metadata'
 const EMBED_URL = 'https://www.google.com/maps/embed/v1/streetview'
 
-// Los carteles se colocan antes del desvío: buscamos la foto un poco antes del ramal.
+//Los carteles se colocan antes del desvío: buscamos la foto un poco antes del ramal
 const LOOK_BACK_KM = 0.12
 const SEARCH_RADIUS_M = 100
-// Muy cerca del punto, el rumbo calculado es inestable y conviene el de la vía.
+//Muy cerca del punto, el rumbo calculado es inestable y conviene el de la vía
 const MIN_BEARING_KM = 0.02
 
 async function fetchMetadata(point, signal) {
@@ -28,7 +28,7 @@ function approachPoint(sign) {
   return sign.heading === null ? sign : movePoint(sign, (sign.heading + 180) % 360, LOOK_BACK_KM)
 }
 
-// Devuelve la foto más cercana al cartel, o null si no hay clave o cobertura.
+//Devuelve la foto más cercana al cartel, o null si no hay clave o cobertura
 export async function findPanorama(sign, { signal } = {}) {
   if (!API_KEY) return null
 
@@ -60,10 +60,8 @@ export function embedUrl({ panoId, heading }) {
   return `${EMBED_URL}?${query}`
 }
 
-// Visor sin clave ni cuenta de Google. No está documentado: si Google lo retira, deja de verse
-// la foto y hay que pasar a la Maps Embed API con VITE_GOOGLE_MAPS_API_KEY.
-// Usa el punto exacto: está sobre la vía, mientras que retroceder puede caer fuera de la carretera
-// y este visor no busca la foto más cercana como la API oficial.
+//Visor sin clave no documentado, si Google lo retira habrá que usar la Maps Embed API
+//Va al punto exacto porque retroceder puede salirse de la vía y este visor no busca la foto más cercana
 export function freeEmbedUrl(sign) {
   const query = new URLSearchParams({
     layer: 'c',
@@ -74,7 +72,7 @@ export function freeEmbedUrl(sign) {
   return `https://www.google.com/maps?${query}`
 }
 
-// Enlace público de Google Maps: funciona aunque no haya clave.
+//Enlace público de Google Maps: funciona aunque no haya clave
 export function mapsUrl(sign, panorama) {
   const query = new URLSearchParams({
     api: 1,

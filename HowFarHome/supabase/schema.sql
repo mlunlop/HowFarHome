@@ -1,4 +1,3 @@
--- Ejecuta esto en el SQL Editor de tu proyecto de Supabase.
 create table if not exists public.sign_votes (
   id bigint generated always as identity primary key,
   municipality_key text not null check (length(municipality_key) < 120),
@@ -9,7 +8,7 @@ create table if not exists public.sign_votes (
 
 create index if not exists sign_votes_municipality_idx on public.sign_votes (municipality_key);
 
--- Cualquiera puede leer y añadir votos, pero nadie puede editarlos ni borrarlos.
+--Cualquiera puede leer y añadir votos, pero nadie puede editarlos ni borrarlos
 alter table public.sign_votes enable row level security;
 
 drop policy if exists "votes are public" on public.sign_votes;

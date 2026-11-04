@@ -1,7 +1,7 @@
 import SiteFooter from '../components/SiteFooter.jsx'
 import { LEGAL_UPDATED } from '../site.js'
 
-// Estilos de texto largo compartidos por las páginas legales.
+//Estilos de texto largo compartidos por las páginas legales
 export function Section({ title, children }) {
   return (
     <section className="mt-10">

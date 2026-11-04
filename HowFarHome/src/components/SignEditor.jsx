@@ -5,7 +5,7 @@ import { freeEmbedUrl } from '../services/streetView.js'
 import LocationPicker from './LocationPicker.jsx'
 
 const PREVIEW_DELAY_MS = 600
-// Por debajo de esto no merece la pena guardar una corrección.
+//Por debajo de esto no merece la pena guardar una corrección
 const MIN_MOVE_KM = 0.01
 
 const COPY = {
@@ -21,7 +21,7 @@ const COPY = {
   },
 }
 
-// mode: 'add' | 'move'. origin: posición actual del cartel al corregirlo.
+//mode: 'add' | 'move'. origin: posición actual del cartel al corregirlo
 function SignEditor({ mode, municipality, start, origin, onSave, onClose }) {
   const [point, setPoint] = useState(start)
   const [preview, setPreview] = useState(start)
@@ -31,7 +31,7 @@ function SignEditor({ mode, municipality, start, origin, onSave, onClose }) {
   const copy = COPY[mode]
   const movedKm = origin ? distanceKm(point, origin) : null
 
-  // La vista de Street View se actualiza al dejar quieto el marcador, no en cada movimiento.
+  //La vista de Street View se actualiza al dejar quieto el marcador, no en cada movimiento
   useEffect(() => {
     const timer = setTimeout(() => setPreview(point), PREVIEW_DELAY_MS)
     return () => clearTimeout(timer)
@@ -95,7 +95,7 @@ function SignEditor({ mode, municipality, start, origin, onSave, onClose }) {
               value={point}
               onChange={setPoint}
               limit={origin && { center: origin, radiusKm: MAX_MOVE_KM }}
-              // Un cartel nuevo puede estar lejos del pueblo: se empieza con vista de comarca.
+              //Un cartel nuevo puede estar lejos del pueblo: se empieza con vista de comarca
               zoom={mode === 'add' ? 11 : 17}
             />
           </div>

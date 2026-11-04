@@ -1,4 +1,4 @@
-// Entrada de las páginas legales: cada HTML indica en <body data-page> cuál mostrar.
+//Entrada de las páginas legales: cada HTML indica en <body data-page> cuál mostrar
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/bricolage-grotesque'

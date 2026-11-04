@@ -1,14 +1,14 @@
 import { DESTINATION_KEYS, NAMED_ROAD_HIGHWAYS, nameVariants } from './signs.js'
 
-// El servidor principal rechaza peticiones al instante a ratos y al reintentar suele responder.
-// El de reserva puede tardar más de dos minutos, así que se deja para el final.
+//El servidor principal rechaza peticiones al instante a ratos y al reintentar suele responder
+//El de reserva puede tardar más de dos minutos, así que se deja para el final
 const HOSTS = ['https://overpass-api.de', 'https://overpass-api.de', 'https://overpass.private.coffee']
 const RETRY_DELAY_MS = 2000
 const QUERY_TIMEOUT_S = 120
-// Tope para toda la búsqueda: si los servidores están saturados, mejor avisar que esperar minutos.
+//Tope para toda la búsqueda: si los servidores están saturados, mejor avisar que esperar minutos
 const TOTAL_BUDGET_MS = 150_000
 const MIN_ATTEMPT_MS = 15_000
-// España con Canarias. Es algo más rápido que filtrar por el área del país.
+//España con Canarias, algo más rápido que filtrar por el área del país
 const SEARCH_BBOX = '27.5,-18.5,44,4.6'
 
 const ACCENT_CLASSES = {
@@ -21,7 +21,7 @@ const ACCENT_CLASSES = {
   c: '[cçCÇ]',
 }
 
-// Regex que encuentra el nombre con o sin tildes. signs.js filtra después la coincidencia exacta.
+//Encuentra el nombre con o sin tildes, signs.js filtra luego la coincidencia exacta
 function accentInsensitivePattern(name) {
   return name
     .normalize('NFD')

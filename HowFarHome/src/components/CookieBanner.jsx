@@ -18,7 +18,7 @@ const OPTIONS = [
 
 const buttonClass =
   'h-11 cursor-pointer rounded-lg px-5 text-sm font-semibold transition-[background-color,color,transform] active:scale-[0.98]'
-// Aceptar y rechazar con el mismo peso visual, como pide la AEPD.
+//Aceptar y rechazar con el mismo peso visual, como pide la AEPD
 const choiceClass = `${buttonClass} bg-white text-black hover:bg-signal`
 const quietClass = `${buttonClass} border border-white/25 text-white hover:border-white`
 

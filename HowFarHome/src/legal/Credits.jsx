@@ -1,7 +1,7 @@
 import { GITHUB_URL, OWNER, REPO_URL, SITE_NAME } from '../site.js'
 import LegalLayout, { Section } from './LegalLayout.jsx'
 
-// Fotos de la portada: redimensionadas y recortadas, se publican con la misma licencia.
+//Fotos de la portada: redimensionadas y recortadas, se publican con la misma licencia
 const photo = (author, imageId, credit) => ({
   name: `Foto de ${author}`,
   url: `https://www.mapillary.com/app/?pKey=${imageId}`,

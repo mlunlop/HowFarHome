@@ -4,7 +4,7 @@ import { ADSENSE_CLIENT, ADSENSE_SLOT, adsEnabled } from '../site.js'
 
 const SCRIPT_ID = 'adsense-script'
 
-// El script de AdSense solo se descarga tras aceptar «Publicidad» en el banner de cookies.
+//El script de AdSense solo se descarga tras aceptar «Publicidad» en el banner de cookies
 function loadScript() {
   if (document.getElementById(SCRIPT_ID)) return
   const script = document.createElement('script')
@@ -26,7 +26,7 @@ function AdBanner() {
     try {
       ;(window.adsbygoogle = window.adsbygoogle || []).push({})
     } catch {
-      // Un bloqueador de anuncios no debe romper la página.
+      //Un bloqueador de anuncios no debe romper la página
     }
   }, [show])
 

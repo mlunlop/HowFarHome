@@ -38,7 +38,7 @@ function Stat({ label, value, note, icon }) {
   )
 }
 
-// stats.route es undefined mientras se calcula y null si OSRM no encontró ruta.
+//stats.route es undefined mientras se calcula y null si OSRM no encontró ruta
 function StatsDashboard({ stats }) {
   const { distanceKm, nearestKm, route, signsFound, bearingDegrees } = stats
   const pending = route === undefined

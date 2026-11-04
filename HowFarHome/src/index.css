@@ -24,7 +24,7 @@
     }
   }
 
-  /* Debe coincidir con el periodo de .road-dashes */
+  /*Debe coincidir con el periodo de .road-dashes*/
   @keyframes road {
     from {
       transform: translateY(-140px);
@@ -48,7 +48,7 @@
     @apply bg-ground font-sans text-white antialiased;
   }
 
-  /* Curvas de nivel, más visibles en los bordes para que el centro respire */
+  /*Curvas de nivel, más visibles en los bordes para que el centro respire*/
   body::before {
     content: '';
     position: fixed;
@@ -75,7 +75,7 @@
   background-size: 100% 140px;
 }
 
-/* Mapa de OSM oscurecido para que encaje con la interfaz */
+/*Mapa de OSM oscurecido para que encaje con la interfaz*/
 .leaflet-container {
   background: var(--color-ground);
   font-family: var(--font-sans);

@@ -8,7 +8,7 @@ import Result from './screens/Result.jsx'
 import { isPostcode, resolvePlaces } from './services/places.js'
 import { SearchError, searchFarthestSign } from './services/searchFarthestSign.js'
 
-// Un sitio ya localizado (de la lista de elección) trae coordenadas; el resto hay que buscarlo.
+//Un sitio ya localizado (de la lista de elección) trae coordenadas; el resto hay que buscarlo
 const isResolvedPlace = (input) => typeof input === 'object' && input.lat !== undefined
 
 function App() {
@@ -21,7 +21,7 @@ function App() {
   const searchRef = useRef(null)
   const placeRef = useRef(null)
 
-  // Título de la pestaña con el resultado: queda mejor al compartir o guardar en marcadores.
+  //Título de la pestaña con el resultado: queda mejor al compartir o guardar en marcadores
   useEffect(() => {
     document.title =
       screen === 'result' && result
@@ -86,7 +86,7 @@ function App() {
     setScreen('landing')
   }
 
-  // TEMPORAL: al cambiar las opciones de pruebas se repite la búsqueda que se está viendo.
+  //TEMPORAL: al cambiar las opciones de pruebas se repite la búsqueda que se está viendo
   function rerunSearch() {
     if (screen === 'result' && placeRef.current) startSearch(placeRef.current)
   }
