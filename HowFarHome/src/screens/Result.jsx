@@ -6,8 +6,7 @@ import StreetViewWindow from '../components/StreetViewWindow.jsx'
 import VerificationPanel from '../components/VerificationPanel.jsx'
 import { useSignDetails } from '../hooks/useSignDetails.js'
 import { bearingDegrees, formatKm } from '../services/geo.js'
-import { applyReports, submitReport } from '../services/reports.js'
-import { signKey } from '../services/signs.js'
+import { addedSignKey, applyReports, submitReport } from '../services/reports.js'
 import { castVote, myVote, verdict } from '../services/votes.js'
 
 //El editor lleva el mapa (Leaflet): solo se descarga al abrirlo
@@ -78,7 +77,8 @@ function Result({ result, notice: initialNotice = null, onSearchAnother }) {
     () => leaderOf(candidates, verdictsFor(candidates, result.votes)).key,
   )
 
-  const sign = candidates.find((candidate) => candidate.key === selectedKey)
+  //Por si la clave elegida deja de existir, nunca se queda la pantalla sin cartel
+  const sign = candidates.find((candidate) => candidate.key === selectedKey) ?? leaderOf(candidates, verdicts)
   const details = useSignDetails(sign, home)
   const leaders = candidates.filter((candidate) => canLead(candidate, verdicts))
   //Sin confirmar no es lo mismo que descartado: un cartel recién añadido aún no puede liderar
@@ -116,8 +116,10 @@ function Result({ result, notice: initialNotice = null, onSearchAnother }) {
       editor === 'add'
         ? await submitReport(municipalityKey, { kind: 'add', ...point, note })
         : await submitReport(municipalityKey, { kind: 'move', signKey: sign.key, ...point })
-    setReports((all) => [...all, report])
-    if (editor === 'add') setSelectedKey(signKey(report))
+    const updated = [...reports, report]
+    setReports(updated)
+    //Un cartel añadido encima de uno conocido se funde con él: se selecciona ese
+    if (editor === 'add') setSelectedKey(addedSignKey(applyReports(result.candidates, updated, home), report))
     setEditor(null)
     setNotice(
       editor === 'add'

@@ -26,6 +26,16 @@ export function indexMeta({ signal } = {}) {
   return metaPromise
 }
 
+//Cambia cada vez que se regenera el índice de OSM o el de fotos: invalida las búsquedas guardadas
+let versionPromise
+export function indexVersion({ signal } = {}) {
+  versionPromise ??= Promise.all([
+    indexMeta({ signal }),
+    fetchJson(`${INDEX_URL}/photo/meta.json`, signal).catch(() => null),
+  ]).then(([osm, photo]) => `${osm?.generatedAt ?? ''}|${photo?.generatedAt ?? ''}`)
+  return versionPromise
+}
+
 //Convierte las entradas compactas al formato de Overpass que entiende extractSigns()
 function toElement({ t, id, tg, g }) {
   if (t === 'm') return { type: 'photo', id, tags: tg, lat: g[0][0], lon: g[0][1] }

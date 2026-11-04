@@ -122,6 +122,9 @@ class SignCollector(osmium.SimpleHandler):
         self.place_names = set()
         #Destinos abreviados ("jerez de la fra."), se indexan al final bajo el nombre completo
         self.abbreviated = defaultdict(dict)
+        #Destinos escritos enteros: muchos municipios no tienen nodo de pueblo con su nombre
+        #completo, pero sí carteles que lo escriben ("castellar de la frontera")
+        self.full_destinations = set()
 
     def add(self, key, element_id, element):
         self.elements[element_id] = element
@@ -132,6 +135,8 @@ class SignCollector(osmium.SimpleHandler):
         for piece in key.split("/"):
             if any(short for _, short in sign_tokens(piece)):
                 self.abbreviated[piece.strip()][element_id] = True
+            else:
+                self.full_destinations.add(piece.strip())
 
     def kept_tags(self, tags):
         return {k: tags[k] for k in KEPT_TAGS if k in tags}
@@ -202,7 +207,7 @@ class SignCollector(osmium.SimpleHandler):
 
     def index_abbreviations(self):
         names_by_word = defaultdict(set)
-        for name in self.place_names:
+        for name in self.place_names | self.full_destinations:
             for word in re.findall(r"[a-z0-9]+", name):
                 if len(word) >= MIN_FULL_WORD_LENGTH:
                     names_by_word[word].add(name)

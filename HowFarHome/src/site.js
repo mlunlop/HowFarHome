@@ -2,7 +2,7 @@
 //«PENDIENTE» marca lo que falta antes de publicar (LSSI-CE art. 10, RGPD art. 13)
 
 export const SITE_NAME = 'HowFarHome?'
-export const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://howfarhome.es').replace(/\/$/, '')
+export const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://howfarhome.com').replace(/\/$/, '')
 export const GITHUB_URL = 'https://github.com/mlunlop'
 export const REPO_URL = 'https://github.com/mlunlop/HowFarHome'
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/m-luna-lpez/'
@@ -16,8 +16,9 @@ export const OWNER = {
 
 //Dónde está alojada la web (encargado del tratamiento de los registros del servidor)
 export const HOSTING = {
-  name: 'PENDIENTE: proveedor de alojamiento',
-  url: '',
+  name: 'Cloudflare, Inc.',
+  url: 'https://www.cloudflare.com/',
+  location: 'UE y EE. UU. (Marco de Privacidad de Datos UE-EE. UU.)',
 }
 
 export const LEGAL_UPDATED = '3 de noviembre de 2026'

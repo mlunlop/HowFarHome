@@ -1,5 +1,5 @@
 //Votos «sí hay cartel / no hay cartel»
-import { isShared, readJson, supabase, writeJson } from './supabase.js'
+import { clientId, isShared, readJson, supabase, writeJson } from './supabase.js'
 
 const TABLE = 'sign_votes'
 const LOCAL_VOTES = 'howfarhome:votes'
@@ -43,13 +43,23 @@ export async function castVote(municipalityKey, key, vote, { source = null, scor
     })
 
   if (isShared) {
-    try {
-      await insert({ ...row, source, score })
-    } catch (error) {
-      //Sin la migración 003 esas columnas no existen, y sin la 004 no se admite el source
-      //'photo': el voto se guarda igualmente, sin ellas
-      if (error.code !== 'PGRST204' && error.code !== '23514') throw error
-      await insert(row)
+    //Sin la migración 003 no existen source y score, sin la 004 no se admite el source 'photo'
+    //y sin la 005 no existe client_id: se prueba con menos columnas hasta que se guarde
+    const attempts = [
+      { ...row, source, score, client_id: clientId() },
+      { ...row, source, score },
+      row,
+    ]
+    for (const [i, body] of attempts.entries()) {
+      try {
+        await insert(body)
+        break
+      } catch (error) {
+        //Este navegador ya votó este cartel (índice único de la 005): el voto ya cuenta
+        if (error.code === '23505') break
+        const optional = error.code === 'PGRST204' || error.code === '23514'
+        if (!optional || i === attempts.length - 1) throw error
+      }
     }
   } else {
     const local = readJson(LOCAL_VOTES)

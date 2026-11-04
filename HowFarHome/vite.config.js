@@ -61,7 +61,7 @@ ${Object.values(PAGES)
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
-  const siteUrl = (env.VITE_SITE_URL || 'https://howfarhome.es').replace(/\/$/, '')
+  const siteUrl = (env.VITE_SITE_URL || 'https://howfarhome.com').replace(/\/$/, '')
 
   return {
     plugins: [react(), tailwindcss(), sitePages(siteUrl, env.VITE_ADSENSE_CLIENT)],

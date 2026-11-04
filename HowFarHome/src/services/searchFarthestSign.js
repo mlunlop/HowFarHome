@@ -1,5 +1,5 @@
 import { fetchSignElements } from './overpass.js'
-import { fetchIndexedElements } from './signIndex.js'
+import { fetchIndexedElements, indexVersion } from './signIndex.js'
 import { extractSigns, normalizeName, pickCandidates } from './signs.js'
 import { fetchReports } from './reports.js'
 import { fetchVotes } from './votes.js'
@@ -27,20 +27,22 @@ function placeKey(place) {
   return `${normalizeName(place.name)}@${place.lat.toFixed(2)},${place.lng.toFixed(2)}`
 }
 
-function readCache(key) {
+//Una búsqueda guardada con otro índice puede haber perdido carteles nuevos: se repite
+function readCache(key, version) {
   try {
     const entry = JSON.parse(localStorage.getItem(CACHE_PREFIX + key))
-    return entry && Date.now() - entry.savedAt < CACHE_TTL_MS ? entry.result : null
+    const fresh = entry && entry.version === version && Date.now() - entry.savedAt < CACHE_TTL_MS
+    return fresh ? entry.result : null
   } catch {
     return null
   }
 }
 
-function writeCache(key, result) {
+function writeCache(key, version, result) {
   try {
     localStorage.setItem(
       CACHE_PREFIX + key,
-      JSON.stringify({ savedAt: Date.now(), result }),
+      JSON.stringify({ savedAt: Date.now(), version, result }),
     )
   } catch {
     //Sin almacenamiento disponible simplemente se repite la búsqueda
@@ -89,11 +91,12 @@ async function findCandidates(municipality, signal) {
 export async function searchFarthestSign(place, { signal, onProgress } = {}) {
   onProgress?.(1)
   const key = placeKey(place)
-  let found = readCache(key)
+  const version = await indexVersion({ signal })
+  let found = readCache(key, version)
   if (!found) {
     found = await findCandidates(place, signal)
     //Una búsqueda vacía no se guarda: si se mapea un cartel, se verá al volver
-    if (found.candidates.length) writeCache(key, found)
+    if (found.candidates.length) writeCache(key, version, found)
   }
 
   onProgress?.(2)

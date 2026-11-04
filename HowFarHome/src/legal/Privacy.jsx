@@ -48,7 +48,7 @@ const RECIPIENTS = [
   ['Teselas de OpenStreetMap (OpenStreetMap Foundation)', 'Reino Unido (decisión de adecuación)', 'Mostrar el mapa al añadir o mover un cartel.'],
   ['Supabase Inc.', 'Según la región del proyecto; garantías mediante cláusulas contractuales tipo', 'Guardar votos y aportaciones.'],
   ['Google Ireland Ltd. / Google LLC', 'UE y EE. UU. (Marco de Privacidad de Datos UE-EE. UU.)', 'Street View y, si se activa, publicidad.'],
-  [HOSTING.name, '—', 'Alojar la web.'],
+  [HOSTING.name, HOSTING.location, 'Alojar la web y protegerla frente a ataques.'],
 ]
 
 function Privacy() {

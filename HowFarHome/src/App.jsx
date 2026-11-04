@@ -109,7 +109,8 @@ function App() {
   function signAdded(report) {
     setResult((current) => ({ ...current, reports: [...current.reports, report] }))
     setNotice('Gracias. Tu cartel aparece como pista sin confirmar hasta que otras personas lo voten.')
-    show('result', 'push')
+    //Sustituye a la pantalla vacía: al volver atrás no reaparece «no hay carteles»
+    show('result')
   }
 
   function cancelSearch() {

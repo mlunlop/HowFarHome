@@ -66,7 +66,8 @@ export function applyReports(candidates, reports, home) {
     return { ...sign, ...point, corrections: fixes.length, distanceKm: distanceKm(point, home) }
   }
 
-  const added = reports
+  const added = []
+  for (const sign of reports
     .filter((report) => report.kind === 'add')
     .map((report) => ({
       key: signKey(report),
@@ -79,12 +80,20 @@ export function applyReports(candidates, reports, home) {
       badge: null,
       osmUrl: null,
       distanceKm: distanceKm(report, home),
-    }))
-    //Un cartel añadido encima de otro que ya está en la lista es el mismo cartel
-    .filter((sign) => !candidates.some((other) => distanceKm(sign, other) < SAME_SIGN_KM))
+    }))) {
+    //Un cartel añadido encima de otro que ya está en la lista (o añadido antes) es el mismo cartel
+    if (![...candidates, ...added].some((other) => distanceKm(sign, other) < SAME_SIGN_KM)) added.push(sign)
+  }
 
   //Las claves no cambian al corregir: los votos siguen asociados al cartel original
   return [...candidates, ...added].map(withMoves).sort((a, b) => b.distanceKm - a.distanceKm)
+}
+
+//Clave con la que aparece en la lista un cartel recién añadido: si cayó encima de otro, la de ese
+export function addedSignKey(candidates, report) {
+  const own = signKey(report)
+  if (candidates.some((sign) => sign.key === own)) return own
+  return candidates.find((sign) => distanceKm(sign, report) < SAME_SIGN_KM)?.key ?? own
 }
 
 export function osmEditUrl({ lat, lng }) {
